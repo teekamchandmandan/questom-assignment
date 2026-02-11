@@ -6,6 +6,7 @@ import {
   buildTree,
   formatSize,
   getFileIcon,
+  languageFromExtension,
   type FileEntry,
   type TreeNode,
 } from '@/lib/file-tree';
@@ -189,34 +190,6 @@ export function FileExplorer() {
     setPreviewError(null);
   }, []);
 
-  /** Derive a shiki-compatible language id from filename */
-  function langFromName(name: string): string {
-    const ext = name.split('.').pop()?.toLowerCase();
-    const map: Record<string, string> = {
-      js: 'javascript',
-      mjs: 'javascript',
-      cjs: 'javascript',
-      ts: 'typescript',
-      tsx: 'tsx',
-      jsx: 'jsx',
-      py: 'python',
-      json: 'json',
-      html: 'html',
-      htm: 'html',
-      css: 'css',
-      md: 'markdown',
-      yml: 'yaml',
-      yaml: 'yaml',
-      sh: 'bash',
-      bash: 'bash',
-      csv: 'csv',
-      xml: 'xml',
-      sql: 'sql',
-      txt: 'text',
-    };
-    return ext ? (map[ext] ?? 'text') : 'text';
-  }
-
   return (
     <>
       {/* Backdrop on mobile */}
@@ -323,7 +296,7 @@ export function FileExplorer() {
                   <div className='flex-1 overflow-auto'>
                     <CodeBlock
                       code={previewContent}
-                      language={langFromName(previewFile.name)}
+                      language={languageFromExtension(previewFile.name)}
                       className='!rounded-none border-none [&_pre]:!py-3 [&_pre]:!px-3 text-[11px]'
                     />
                   </div>

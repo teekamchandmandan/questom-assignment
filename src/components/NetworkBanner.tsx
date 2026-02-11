@@ -4,12 +4,11 @@ import { useState, useEffect } from 'react';
 import { WifiOffIcon } from './Icons';
 
 export function NetworkBanner() {
-  const [isOffline, setIsOffline] = useState(false);
+  const [isOffline, setIsOffline] = useState(
+    () => typeof navigator !== 'undefined' && !navigator.onLine,
+  );
 
   useEffect(() => {
-    // Sync with actual network state after hydration
-    setIsOffline(!navigator.onLine);
-
     const handleOffline = () => setIsOffline(true);
     const handleOnline = () => setIsOffline(false);
 

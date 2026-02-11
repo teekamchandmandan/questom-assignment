@@ -5,6 +5,7 @@ import {
   MAX_OUTPUT_SIZE,
 } from './constants';
 import { outputManager } from './output-stream';
+import { formatSize, type FileEntry } from './file-tree';
 
 export interface CodeExecutionResult {
   stdout: string;
@@ -303,11 +304,7 @@ export async function executeCode(
 
 // ── File listing ─────────────────────────────────────────────────────
 
-export interface FileEntry {
-  path: string;
-  type: 'file' | 'directory';
-  size?: number;
-}
+export type { FileEntry } from './file-tree';
 
 /**
  * Lists all user-created files in the sandbox for a given conversation.
@@ -417,7 +414,7 @@ export async function readFileFromSandbox(
       const size = parseInt(sizeStr, 10);
       if (size > MAX_FILE_READ_SIZE) {
         return {
-          content: `[File too large to preview: ${formatBytes(size)}]`,
+          content: `[File too large to preview: ${formatSize(size)}]`,
           size,
         };
       }
@@ -433,12 +430,6 @@ export async function readFileFromSandbox(
   }
 
   return null;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /** One-off sandbox for requests without a conversation ID (backward compat) */

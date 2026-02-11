@@ -41,5 +41,4 @@ MULTI-FILE SUPPORT:
 - Example workflow: writeFile to create package.json & utils.js, then runCode with filePath: "/vercel/sandbox/index.js" to run the main program that imports utils.js.`;
 }
 
-// Keep a default export for backward compat (used in existing code)
-export const SYSTEM_PROMPT = getSystemPrompt('javascript');
+

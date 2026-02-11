@@ -1,38 +1,11 @@
 import { CopyButton } from './CopyButton';
 import { CodeBlock } from './CodeBlock';
 import { FileIcon, CheckSmallIcon } from './Icons';
+import { languageFromExtension } from '@/lib/file-tree';
 import type { WriteFileToolPart } from '@/lib/types';
 
 interface WriteFileCardProps {
   part: WriteFileToolPart;
-}
-
-/** Infer a display language from the file extension for syntax highlighting */
-function languageFromPath(filePath: string): string {
-  const ext = filePath.split('.').pop()?.toLowerCase();
-  const map: Record<string, string> = {
-    js: 'javascript',
-    mjs: 'javascript',
-    cjs: 'javascript',
-    ts: 'typescript',
-    tsx: 'tsx',
-    jsx: 'jsx',
-    py: 'python',
-    json: 'json',
-    html: 'html',
-    css: 'css',
-    md: 'markdown',
-    yml: 'yaml',
-    yaml: 'yaml',
-    xml: 'xml',
-    sh: 'bash',
-    bash: 'bash',
-    sql: 'sql',
-    csv: 'plaintext',
-    txt: 'plaintext',
-    toml: 'toml',
-  };
-  return map[ext ?? ''] ?? 'plaintext';
 }
 
 export function WriteFileCard({ part }: WriteFileCardProps) {
@@ -46,7 +19,7 @@ export function WriteFileCard({ part }: WriteFileCardProps) {
   const isDone = state === 'output-available';
   const isError = state === 'output-error';
 
-  const language = filePath ? languageFromPath(filePath) : 'plaintext';
+  const language = filePath ? languageFromExtension(filePath) : 'plaintext';
 
   return (
     <div className='border border-zinc-700/80 rounded-lg overflow-hidden my-2 animate-card-in shadow-lg shadow-black/20'>

@@ -82,6 +82,35 @@ export function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Map a file extension to a Shiki-compatible language id for syntax highlighting. */
+export function languageFromExtension(nameOrPath: string): string {
+  const ext = nameOrPath.split('.').pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    js: 'javascript',
+    mjs: 'javascript',
+    cjs: 'javascript',
+    ts: 'typescript',
+    tsx: 'tsx',
+    jsx: 'jsx',
+    py: 'python',
+    json: 'json',
+    html: 'html',
+    htm: 'html',
+    css: 'css',
+    md: 'markdown',
+    yml: 'yaml',
+    yaml: 'yaml',
+    sh: 'bash',
+    bash: 'bash',
+    csv: 'csv',
+    xml: 'xml',
+    sql: 'sql',
+    toml: 'toml',
+    txt: 'text',
+  };
+  return ext ? (map[ext] ?? 'text') : 'text';
+}
+
 /** Return an emoji icon for a filename based on its extension. */
 export function getFileIcon(name: string): string {
   const ext = name.split('.').pop()?.toLowerCase();
