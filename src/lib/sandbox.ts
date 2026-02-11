@@ -26,14 +26,30 @@ interface SandboxSession {
   runtime: Runtime;
 }
 
-const sessions = new Map<string, SandboxSession>();
+// Use globalThis so all Next.js API route bundles share the same Map
+// (turbopack compiles each route separately, so module-level singletons
+// are NOT shared between /api/chat and /api/sandbox/*).
+const globalKey = Symbol.for('sandbox-sessions');
+const timerKey = Symbol.for('sandbox-cleanup-timer');
+
+type GlobalWithSandbox = typeof globalThis & {
+  [k: symbol]: unknown;
+};
+
+function getSessions(): Map<string, SandboxSession> {
+  const g = globalThis as GlobalWithSandbox;
+  if (!g[globalKey]) {
+    g[globalKey] = new Map<string, SandboxSession>();
+  }
+  return g[globalKey] as Map<string, SandboxSession>;
+}
 
 // Periodic cleanup interval (runs every 60 s)
-let cleanupInterval: ReturnType<typeof setInterval> | null = null;
-
 function startCleanupTimer() {
-  if (cleanupInterval) return;
-  cleanupInterval = setInterval(() => {
+  const g = globalThis as GlobalWithSandbox;
+  if (g[timerKey]) return;
+  g[timerKey] = setInterval(() => {
+    const sessions = getSessions();
     const now = Date.now();
     for (const [key, session] of sessions) {
       if (now - session.lastUsed > SANDBOX_SESSION_TTL) {
@@ -42,9 +58,9 @@ function startCleanupTimer() {
       }
     }
     // Stop the interval when there are no sessions left
-    if (sessions.size === 0 && cleanupInterval) {
-      clearInterval(cleanupInterval);
-      cleanupInterval = null;
+    if (sessions.size === 0 && g[timerKey]) {
+      clearInterval(g[timerKey] as ReturnType<typeof setInterval>);
+      g[timerKey] = undefined;
     }
   }, 60_000);
 }
@@ -57,6 +73,7 @@ async function getOrCreateSandbox(
   conversationId: string,
   runtime: Runtime,
 ): Promise<SandboxInstance> {
+  const sessions = getSessions();
   const key = sessionKey(conversationId, runtime);
   const existing = sessions.get(key);
 
@@ -203,9 +220,11 @@ export async function writeFileToSandbox(
   filePath: string,
   content: string,
   conversationId?: string,
+  language?: string,
 ): Promise<WriteFileResult> {
-  // Determine runtime — default to node24 for file operations
-  const runtime: Runtime = 'node24';
+  // Pick runtime matching the conversation language so the file
+  // lands in the same sandbox that runCode uses.
+  const runtime: Runtime = language === 'python' ? 'python3.13' : 'node24';
 
   try {
     const sandbox = conversationId
@@ -270,6 +289,7 @@ export async function executeCode(
   } catch (error) {
     // If the sandbox died (timeout, OOM, etc.) remove it so a fresh
     // one is created on the next call.
+    const sessions = getSessions();
     const key = sessionKey(conversationId, runtime);
     const session = sessions.get(key);
     if (session) {
@@ -295,36 +315,47 @@ export interface FileEntry {
 export async function listSandboxFiles(
   conversationId: string,
 ): Promise<FileEntry[]> {
-  const key = sessionKey(conversationId, 'node24');
-  const session = sessions.get(key);
-  if (!session) {
-    // Also check python runtime
-    const pyKey = sessionKey(conversationId, 'python3.13');
-    const pySession = sessions.get(pyKey);
-    if (!pySession) return [];
-    return listFilesInSandbox(pySession.sandbox);
+  const sessions = getSessions();
+  const runtimes: Runtime[] = ['node24', 'python3.13'];
+  const allFiles: FileEntry[] = [];
+  const seenPaths = new Set<string>();
+
+  for (const runtime of runtimes) {
+    const key = sessionKey(conversationId, runtime);
+    const session = sessions.get(key);
+    if (!session) continue;
+
+    const files = await listFilesInSandbox(session.sandbox);
+    for (const file of files) {
+      if (!seenPaths.has(file.path)) {
+        seenPaths.add(file.path);
+        allFiles.push(file);
+      }
+    }
   }
-  return listFilesInSandbox(session.sandbox);
+
+  return allFiles.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+    return a.path.localeCompare(b.path);
+  });
 }
 
 async function listFilesInSandbox(
   sandbox: SandboxInstance,
 ): Promise<FileEntry[]> {
   try {
-    // List all files/dirs under /vercel/sandbox, excluding node_modules and .npm
-    const result = await sandbox.runCommand('find', [
-      '/vercel/sandbox',
-      '-not',
-      '-path',
-      '*/node_modules/*',
-      '-not',
-      '-path',
-      '*/.npm/*',
-      '-not',
-      '-path',
-      '*/package-lock.json',
-      '-printf',
-      '%y %s %p\n',
+    // Use a POSIX-compatible approach: find + stat via shell
+    // (-printf is a GNU extension that may not be available in all runtimes)
+    const result = await sandbox.runCommand('sh', [
+      '-c',
+      `find /vercel/sandbox -not -path '*/node_modules/*' -not -path '*/.npm/*' -not -path '*/package-lock.json' -not -path '*/__pycache__/*' -not -path '*/__pycache__' | while IFS= read -r p; do
+  if [ -d "$p" ]; then
+    echo "d 0 $p"
+  elif [ -f "$p" ]; then
+    s=$(stat -c '%s' "$p" 2>/dev/null || stat -f '%z' "$p" 2>/dev/null || echo 0)
+    echo "f $s $p"
+  fi
+done`,
     ]);
     const stdout = await result.stdout();
     if (!stdout.trim()) return [];
@@ -351,6 +382,62 @@ async function listFilesInSandbox(
   } catch {
     return [];
   }
+}
+
+// ── File reading ─────────────────────────────────────────────────────
+
+const MAX_FILE_READ_SIZE = 100_000; // 100 KB max for preview
+
+/**
+ * Reads the content of a single file from the sandbox.
+ * Returns the text content or null if the file doesn't exist / is too large.
+ */
+export async function readFileFromSandbox(
+  conversationId: string,
+  filePath: string,
+): Promise<{ content: string; size: number } | null> {
+  const sessions = getSessions();
+  const runtimes: Runtime[] = ['node24', 'python3.13'];
+
+  for (const runtime of runtimes) {
+    const key = sessionKey(conversationId, runtime);
+    const session = sessions.get(key);
+    if (!session) continue;
+
+    try {
+      // Check if file exists and get size
+      const stat = await session.sandbox.runCommand('sh', [
+        '-c',
+        `stat -c '%s' ${JSON.stringify(filePath)} 2>/dev/null || stat -f '%z' ${JSON.stringify(filePath)} 2>/dev/null`,
+      ]);
+      const sizeStr = (await stat.stdout()).trim();
+      if (!sizeStr || stat.exitCode !== 0) continue;
+
+      const size = parseInt(sizeStr, 10);
+      if (size > MAX_FILE_READ_SIZE) {
+        return {
+          content: `[File too large to preview: ${formatBytes(size)}]`,
+          size,
+        };
+      }
+
+      const result = await session.sandbox.runCommand('cat', [filePath]);
+      if (result.exitCode !== 0) continue;
+
+      const content = await result.stdout();
+      return { content, size };
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /** One-off sandbox for requests without a conversation ID (backward compat) */

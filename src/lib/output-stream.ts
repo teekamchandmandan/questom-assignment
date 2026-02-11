@@ -87,4 +87,21 @@ class OutputStreamManager {
   }
 }
 
-export const outputManager = new OutputStreamManager();
+// Use globalThis so all Next.js API route bundles share the same instance
+// (turbopack compiles each route separately, so module-level singletons
+// are NOT shared between /api/chat and /api/sandbox/*).
+const outputManagerKey = Symbol.for('sandbox-output-manager');
+
+type GlobalWithOutput = typeof globalThis & {
+  [k: symbol]: unknown;
+};
+
+function getOutputManager(): OutputStreamManager {
+  const g = globalThis as GlobalWithOutput;
+  if (!g[outputManagerKey]) {
+    g[outputManagerKey] = new OutputStreamManager();
+  }
+  return g[outputManagerKey] as OutputStreamManager;
+}
+
+export const outputManager = getOutputManager();

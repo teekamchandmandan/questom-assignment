@@ -116,7 +116,7 @@ export async function POST(req: Request) {
         .describe('A brief description of what this file is for'),
     }),
     execute: async ({ filePath, content }) =>
-      writeFileToSandbox(filePath, content, conversationId),
+      writeFileToSandbox(filePath, content, conversationId, lang),
   });
 
   const modelMessages = await convertToModelMessages(messages);
