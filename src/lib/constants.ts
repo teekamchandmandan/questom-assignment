@@ -1,5 +1,8 @@
 export const MODEL_NAME = 'gpt-5-mini';
 export const MAX_STEPS = 5;
+export const MAX_TOKENS = 4096; // Cap model output to control cost
+export const MAX_INPUT_LENGTH = 10_000; // Max characters per user message
+export const MAX_OUTPUT_SIZE = 50_000; // Max chars for stdout/stderr before truncation
 export const SANDBOX_TIMEOUT = 300_000; // 5 min — sandbox lifetime (reused across calls)
 export const SANDBOX_SESSION_TTL = 300_000; // 5 min idle TTL before cleanup
 

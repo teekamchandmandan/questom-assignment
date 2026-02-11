@@ -6,6 +6,8 @@ import {
   getSystemPrompt,
   MODEL_NAME,
   MAX_STEPS,
+  MAX_TOKENS,
+  MAX_INPUT_LENGTH,
   type SupportedLanguage,
 } from '@/lib/constants';
 
@@ -15,8 +17,58 @@ const VALID_LANGUAGES = new Set<SupportedLanguage>([
   'typescript',
 ]);
 
+// ── Simple in-memory rate limiter ──────────────────────────────────
+const RATE_LIMIT_WINDOW = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 20; // max requests per window per IP
+const requestCounts = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = requestCounts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    requestCounts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
 export async function POST(req: Request) {
+  // ── Rate limiting ────────────────────────────────────────────────
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  if (isRateLimited(ip)) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests. Please wait a moment.' }),
+      { status: 429, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
   const { messages, chatId, language } = await req.json();
+
+  // ── Input validation ─────────────────────────────────────────────
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response(
+      JSON.stringify({ error: 'Messages array is required.' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  // Validate last user message length
+  const lastMsg = messages[messages.length - 1];
+  const lastText =
+    lastMsg?.parts
+      ?.filter((p: { type: string }) => p.type === 'text')
+      ?.map((p: { text: string }) => p.text)
+      ?.join('') ?? '';
+  if (lastText.length > MAX_INPUT_LENGTH) {
+    return new Response(
+      JSON.stringify({
+        error: `Message too long (${lastText.length} chars). Maximum is ${MAX_INPUT_LENGTH} characters.`,
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
 
   const conversationId = typeof chatId === 'string' ? chatId : undefined;
   const lang: SupportedLanguage =
@@ -73,6 +125,7 @@ export async function POST(req: Request) {
     messages: modelMessages,
     tools: { runCode, writeFile },
     stopWhen: stepCountIs(MAX_STEPS),
+    maxOutputTokens: MAX_TOKENS,
   });
 
   return result.toUIMessageStreamResponse();

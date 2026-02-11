@@ -45,7 +45,10 @@ export function NetworkBanner() {
         <path d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-.274.868-.656 1.686-1.132 2.44' />
         <path d='m2 2 20 20' />
       </svg>
-      <span>You&apos;re offline — messages won&apos;t send until the connection is restored</span>
+      <span>
+        You&apos;re offline — messages won&apos;t send until the connection is
+        restored
+      </span>
     </div>
   );
 }

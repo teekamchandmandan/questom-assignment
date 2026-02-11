@@ -61,10 +61,21 @@ export default function Chat() {
     [],
   );
 
-  const { messages, setMessages, sendMessage, status, error, stop, regenerate } = useChat({
+  const {
+    messages,
+    setMessages,
+    sendMessage,
+    status,
+    error,
+    stop,
+    regenerate,
+  } = useChat({
     transport,
     onError: (err) => {
-      addToast(err.message || 'Something went wrong. Please try again.', 'error');
+      addToast(
+        err.message || 'Something went wrong. Please try again.',
+        'error',
+      );
     },
   });
 

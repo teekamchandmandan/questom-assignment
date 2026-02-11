@@ -229,12 +229,13 @@ Transform the working prototype into a polished, architecturally sound demo that
 - **Network disconnection detection:** Created `NetworkBanner` component using `navigator.onLine` + `online`/`offline` event listeners. Shows an amber warning banner below the header when offline, auto-hides when connectivity returns.
 - **Toast notifications for transient errors:** Created `Toast` component system (`ToastContainer` + `useToasts` hook). Toasts appear in top-right corner with slide-in animation, auto-dismiss after 5s, support error/success/info types. Connected to `useChat`'s `onError` callback so any API error triggers a toast notification in addition to the inline error display.
 
-### 22. Security hardening
+### 22. Security hardening ✅
 
-- Add `maxTokens` to `streamText` to cap response cost
-- Input message length validation
-- Truncate stdout/stderr beyond a size threshold
-- Simple in-memory rate limiting on the API route
+- **`maxOutputTokens: 4096`** on `streamText` to cap response cost per request
+- **Input message length validation:** API route rejects messages exceeding `MAX_INPUT_LENGTH` (10,000 chars) with a 400 response before hitting the model
+- **Stdout/stderr truncation:** `truncateOutput()` helper in `sandbox.ts` caps output at `MAX_OUTPUT_SIZE` (50,000 chars) with a truncation notice — applied to both streaming and non-streaming execution paths
+- **In-memory rate limiting:** IP-based sliding window (20 requests/minute per IP). Returns 429 when exceeded. Uses `x-forwarded-for` header for proxy-aware IP detection. Resets per-window automatically.
+- All constants (`MAX_TOKENS`, `MAX_INPUT_LENGTH`, `MAX_OUTPUT_SIZE`) centralized in `constants.ts`
 
 ### 23. Smart auto-scroll
 

@@ -1,5 +1,9 @@
 import { Sandbox } from '@vercel/sandbox';
-import { SANDBOX_TIMEOUT, SANDBOX_SESSION_TTL } from './constants';
+import {
+  SANDBOX_TIMEOUT,
+  SANDBOX_SESSION_TTL,
+  MAX_OUTPUT_SIZE,
+} from './constants';
 import { outputManager } from './output-stream';
 
 export interface CodeExecutionResult {
@@ -154,20 +158,37 @@ SANDBOX_EOF`,
     const finished = await cmd.wait();
     outputManager.end(streamId);
 
-    return { stdout, stderr, exitCode: finished.exitCode };
+    return {
+      stdout: truncateOutput(stdout),
+      stderr: truncateOutput(stderr),
+      exitCode: finished.exitCode,
+    };
   }
 
   // Non-streaming: wait for full result
   const result = await sandbox.runCommand(commandForLanguage(language), args);
   const stdout = await result.stdout();
   const stderr = await result.stderr();
-  return { stdout, stderr, exitCode: result.exitCode };
+  return {
+    stdout: truncateOutput(stdout),
+    stderr: truncateOutput(stderr),
+    exitCode: result.exitCode,
+  };
 }
 
 function toErrorResult(error: unknown): CodeExecutionResult {
   const message =
     error instanceof Error ? error.message : 'Unknown sandbox error';
   return { stdout: '', stderr: message, exitCode: 1 };
+}
+
+/** Truncate output if it exceeds MAX_OUTPUT_SIZE to prevent excessive token usage */
+function truncateOutput(output: string): string {
+  if (output.length <= MAX_OUTPUT_SIZE) return output;
+  return (
+    output.slice(0, MAX_OUTPUT_SIZE) +
+    `\n\n--- Output truncated (${output.length.toLocaleString()} chars, limit ${MAX_OUTPUT_SIZE.toLocaleString()}) ---`
+  );
 }
 
 // ── Public API ───────────────────────────────────────────────────────
