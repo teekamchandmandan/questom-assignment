@@ -258,30 +258,29 @@ Transform the working prototype into a polished, architecturally sound demo that
 
 ## Phase 3: Deploy & Present
 
-### 25. Fix remaining lint errors
+### 25. Fix remaining lint errors ✅
 
-- **Icons.tsx** — `react/display-name` error: the `icon()` factory returns an anonymous component; add `displayName` or convert to named function components
-- **NetworkBanner.tsx** — `react-hooks/set-state-in-effect` error: `setIsOffline(!navigator.onLine)` called synchronously in `useEffect` body; refactor to use `useSyncExternalStore` or initialize state from a lazy initializer instead
-- Run `npm run lint` — must pass with zero errors
-- `npx tsc --noEmit` already passes ✅
+- **Icons.tsx** — `react/display-name` error: fixed by converting anonymous arrow in `icon()` factory to a named `Icon` function component with `displayName`
+- **NetworkBanner.tsx** — was already clean: uses lazy initializer `useState(() => ...)`, no lint error
+- `npm run lint` — passes with zero errors ✅
+- `npx tsc --noEmit` — passes with zero errors ✅
 
-### 26. Push to GitHub
+### 26. Push to GitHub ✅
 
-- Create a new GitHub repo (public or private)
-- `git remote add origin <repo-url>` → `git push -u origin main`
+- Pushed to GitHub — `git push -u origin main` succeeded
 - Verify repo is visible and README renders correctly
 
-### 27. Deploy to Vercel
+### 27. Deploy to Vercel — 📋 MANUAL
 
 - Vercel project already linked (`prj_t7GXciVaodFRiBINoGb6nqKOfVgA`, project name: `questom-sandbox-agent`)
-- Connect the GitHub repo in Vercel dashboard → enable auto-deploy from `main`
-- Add `OPENAI_API_KEY` in Vercel project environment variables
+- **TODO:** Connect the GitHub repo in Vercel dashboard → enable auto-deploy from `main`
+- **TODO:** Add `OPENAI_API_KEY` in Vercel project environment variables (Settings → Environment Variables)
 - Vercel Sandbox works natively when deployed on Vercel (no extra config needed)
 - **Note:** Real-time output streaming (SSE via `outputManager`) requires shared memory — won't work in serverless (separate function instances). The client falls back gracefully: shows output all at once when execution completes.
-- Test the deployed URL end-to-end: prompt → code generation → sandbox execution → output display
-- Test multi-step sessions, language switching, file explorer, conversation persistence
+- **TODO:** Test the deployed URL end-to-end: prompt → code generation → sandbox execution → output display
+- **TODO:** Test multi-step sessions, language switching, file explorer, conversation persistence
 
-### 28. Record the Loom video (~10 min)
+### 28. Record the Loom video (~10 min) — 📋 MANUAL
 
 - **[Outside VS Code — manual step]**
 - **Prep the diagram beforehand** (Excalidraw or Mermaid):
@@ -304,7 +303,7 @@ Transform the working prototype into a polished, architecturally sound demo that
   3. **Code walkthrough (4 min):** Walk through `route.ts` (agent + tools + sandbox management), component structure, explain the tool calling loop, how `stopWhen: stepCountIs()` enables iteration, how sandbox isolation works
   4. **Under the hood (2 min):** Explain Firecracker microVMs, Amazon Linux 2023 runtime, writable `/vercel/sandbox`, why sandboxing matters for untrusted code, and the request lifecycle through AI SDK tool calls
 
-### 29. Submit
+### 29. Submit — 📋 MANUAL
 
 - **[Outside VS Code — manual step]**
 - Email `founders@questom.ai` with subject: "Assignment Submission - Video Walkthrough"
@@ -314,13 +313,13 @@ Transform the working prototype into a polished, architecturally sound demo that
 
 ## Verification Checklist
 
-- [ ] **Lint:** `npm run lint` — zero errors (currently 2: Icons.tsx display name, NetworkBanner.tsx setState-in-effect)
+- [x] **Lint:** `npm run lint` — zero errors ✅
 - [x] **Types:** `npx tsc --noEmit` — zero errors ✅
 - [ ] **Visual:** Test on mobile (375px), tablet (768px), and desktop (1440px)
 - [ ] **Accessibility:** Run Lighthouse accessibility audit, target 90+ score
 - [ ] **Functionality:** Test multi-step sandbox sessions (create file → run → modify → run again)
 - [ ] **Error paths:** Test with invalid code, timeout scenarios, network disconnection
-- [ ] **Git:** Push to GitHub with a clean commit history
+- [x] **Git:** Push to GitHub with a clean commit history ✅
 - [ ] **Deploy:** Vercel deployment live and functional
 - [ ] **Video:** Recorded, under 10 min, covers demo + architecture + code walkthrough + under the hood
 

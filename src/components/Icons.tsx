@@ -15,11 +15,13 @@ const defaults: IconProps = {
 };
 
 function icon(size: number, children: React.ReactNode) {
-  return ({ ...props }: IconProps) => (
+  const Icon = ({ ...props }: IconProps) => (
     <svg width={size} height={size} {...defaults} {...props}>
       {children}
     </svg>
   );
+  Icon.displayName = 'Icon';
+  return Icon;
 }
 
 // ── Icons ───────────────────────────────────────────────────────────
