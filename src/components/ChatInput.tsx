@@ -10,10 +10,6 @@ const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
   { value: 'python', label: 'Python' },
 ];
 
-export const LANGUAGE_LABELS: Record<Language, string> = Object.fromEntries(
-  LANGUAGE_OPTIONS.map((o) => [o.value, o.label]),
-) as Record<Language, string>;
-
 const DOT_COLORS: Record<Language, string> = {
   javascript: 'bg-yellow-400',
   typescript: 'bg-blue-400',
@@ -55,10 +51,11 @@ export function ChatInput() {
           />
           {/* Dropdown chevron */}
           <ChevronDownIcon className='pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-500' />
+
           {/* Custom tooltip */}
           <div
             role='tooltip'
-            className='pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 opacity-0 scale-95 group-hover/lang:opacity-100 group-hover/lang:scale-100 transition-all duration-150 ease-out z-50'
+            className='pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-4 opacity-0 scale-95 group-hover/lang:opacity-100 group-hover/lang:scale-100 group-focus-within/lang:!opacity-0 group-focus-within/lang:!scale-95 transition-all duration-150 ease-out z-50'
           >
             <div className='relative bg-zinc-800 border border-zinc-700/80 rounded-lg px-3 py-2 shadow-xl shadow-black/40 whitespace-nowrap'>
               <p className='text-xs font-medium text-zinc-200'>

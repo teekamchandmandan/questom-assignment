@@ -24,7 +24,6 @@ import {
   type Language,
 } from '@/lib/conversations';
 import { useToasts, type ToastData } from '@/components/Toast';
-import { LANGUAGE_LABELS } from '@/components/ChatInput';
 
 function generateId() {
   return crypto.randomUUID();
@@ -281,7 +280,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           setLanguage: (lang: Language) => {
             if (lang !== language) {
               setLanguage(lang);
-              addToast(`Code will now run as ${LANGUAGE_LABELS[lang]}`, 'info');
             }
           },
           stop,
