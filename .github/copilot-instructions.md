@@ -8,19 +8,19 @@ Next.js 16 App Router chat application. An OpenAI agent (GPT-5 mini) generates a
 
 **Key files:**
 
-| File                                  | Responsibility                                                                                                                         |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/chat-context.tsx`            | Single `ChatProvider` context with `{ state, actions, meta }` pattern; all chat state lives here                                       |
-| `src/lib/sandbox.ts`                  | Sandbox session manager (`Map` + TTL keyed by `conversationId:runtime`); `executeCode()`, `writeFileToSandbox()`, `listSandboxFiles()`; serverless reconnection via `Sandbox.get({ sandboxId })` |
-| `src/lib/constants.ts`                | All tunables: `MODEL_NAME`, timeouts, max tokens, `getSystemPrompt()` factory                                                          |
-| `src/lib/types.ts`                    | Tool part interfaces + type guards (`RunCodeToolPart`, `WriteFileToolPart`, `isRunCodeToolPart()`); tool outputs include `sandboxId`    |
-| `src/lib/output-stream.ts`            | In-memory `EventEmitter` pub/sub for real-time stdout/stderr streaming                                                                 |
-| `src/lib/conversations.ts`            | localStorage CRUD for conversations (key: `sandbox-agent-conversations:v1`)                                                            |
-| `src/lib/file-tree.ts`                | `FileEntry` type, `buildTree()` to convert flat file list to nested `TreeNode` tree, file icon helpers                                 |
-| `src/app/api/chat/route.ts`           | `streamText` with `convertToModelMessages()`, rate limiter, input validation                                                           |
-| `src/app/api/sandbox/stream/route.ts` | SSE endpoint — subscribes to `outputManager` for real-time output                                                                      |
-| `src/app/api/sandbox/files/route.ts`  | GET endpoint — returns sandbox file tree for the `FileExplorer` panel                                                                  |
-| `src/app/api/sandbox/files/read/route.ts` | GET endpoint — reads individual file content from sandbox for preview                                                              |
+| File                                      | Responsibility                                                                                                                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/lib/chat-context.tsx`                | Single `ChatProvider` context with `{ state, actions, meta }` pattern; all chat state lives here                                                                                                 |
+| `src/lib/sandbox.ts`                      | Sandbox session manager (`Map` + TTL keyed by `conversationId:runtime`); `executeCode()`, `writeFileToSandbox()`, `listSandboxFiles()`; serverless reconnection via `Sandbox.get({ sandboxId })` |
+| `src/lib/constants.ts`                    | All tunables: `MODEL_NAME`, timeouts, max tokens, `getSystemPrompt()` factory                                                                                                                    |
+| `src/lib/types.ts`                        | Tool part interfaces + type guards (`RunCodeToolPart`, `WriteFileToolPart`, `isRunCodeToolPart()`); tool outputs include `sandboxId`                                                             |
+| `src/lib/output-stream.ts`                | In-memory `EventEmitter` pub/sub for real-time stdout/stderr streaming                                                                                                                           |
+| `src/lib/conversations.ts`                | localStorage CRUD for conversations (key: `sandbox-agent-conversations:v1`)                                                                                                                      |
+| `src/lib/file-tree.ts`                    | `FileEntry` type, `buildTree()` to convert flat file list to nested `TreeNode` tree, file icon helpers                                                                                           |
+| `src/app/api/chat/route.ts`               | `streamText` with `convertToModelMessages()`, rate limiter, input validation                                                                                                                     |
+| `src/app/api/sandbox/stream/route.ts`     | SSE endpoint — subscribes to `outputManager` for real-time output                                                                                                                                |
+| `src/app/api/sandbox/files/route.ts`      | GET endpoint — returns sandbox file tree for the `FileExplorer` panel                                                                                                                            |
+| `src/app/api/sandbox/files/read/route.ts` | GET endpoint — reads individual file content from sandbox for preview                                                                                                                            |
 
 ## AI SDK v6 Conventions
 

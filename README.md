@@ -36,14 +36,14 @@ User → Chat UI (Next.js App Router)
 
 **Key architectural decisions:**
 
-| Decision                          | Rationale                                                             |
-| --------------------------------- | --------------------------------------------------------------------- |
-| `streamText` over `ToolLoopAgent` | Simpler, well-documented, sufficient for scoped tool-calling loops    |
-| Sandbox session reuse (Map + TTL) | Enables stateful multi-step coding; 5-min idle cleanup prevents leaks |
-| `Sandbox.get()` reconnection       | File explorer works in serverless where in-memory sessions aren't shared |
-| Shiki over Prism                   | VS Code-quality highlighting with broader language support            |
-| localStorage over database        | Keeps demo self-contained with zero infrastructure dependencies       |
-| SSE for output streaming          | Decoupled from chat stream; graceful fallback when unavailable        |
+| Decision                          | Rationale                                                                |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| `streamText` over `ToolLoopAgent` | Simpler, well-documented, sufficient for scoped tool-calling loops       |
+| Sandbox session reuse (Map + TTL) | Enables stateful multi-step coding; 5-min idle cleanup prevents leaks    |
+| `Sandbox.get()` reconnection      | File explorer works in serverless where in-memory sessions aren't shared |
+| Shiki over Prism                  | VS Code-quality highlighting with broader language support               |
+| localStorage over database        | Keeps demo self-contained with zero infrastructure dependencies          |
+| SSE for output streaming          | Decoupled from chat stream; graceful fallback when unavailable           |
 
 ## Project Structure
 
