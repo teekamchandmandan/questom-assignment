@@ -133,13 +133,7 @@ async function runInSandbox(
 ): Promise<CodeExecutionResult> {
   // If filePath specified, write code to file first
   if (filePath) {
-    await sandbox.runCommand('mkdir', ['-p', filePath.replace(/\/[^/]+$/, '')]);
-    await sandbox.runCommand('sh', [
-      '-c',
-      `cat > ${filePath} << 'SANDBOX_EOF'
-${code}
-SANDBOX_EOF`,
-    ]);
+    await writeFileViaCat(sandbox, filePath, code);
   }
 
   // For TypeScript, ensure tsx is available
@@ -193,6 +187,24 @@ SANDBOX_EOF`,
   };
 }
 
+/**
+ * Write file content to the sandbox using a heredoc.
+ * Shared by both runInSandbox (when filePath is given) and writeFileToSandbox.
+ */
+async function writeFileViaCat(
+  sandbox: SandboxInstance,
+  filePath: string,
+  content: string,
+): Promise<void> {
+  await sandbox.runCommand('mkdir', ['-p', filePath.replace(/\/[^/]+$/, '')]);
+  await sandbox.runCommand('sh', [
+    '-c',
+    `cat > ${filePath} << 'SANDBOX_EOF'
+${content}
+SANDBOX_EOF`,
+  ]);
+}
+
 function toErrorResult(error: unknown): CodeExecutionResult {
   const message =
     error instanceof Error ? error.message : 'Unknown sandbox error';
@@ -231,19 +243,8 @@ export async function writeFileToSandbox(
       ? await getOrCreateSandbox(conversationId, runtime)
       : await Sandbox.create({ runtime, timeout: SANDBOX_TIMEOUT });
 
-    // Ensure parent directory exists
-    const parentDir = filePath.replace(/\/[^/]+$/, '');
-    if (parentDir && parentDir !== filePath) {
-      await sandbox.runCommand('mkdir', ['-p', parentDir]);
-    }
-
-    // Write file content using heredoc
-    await sandbox.runCommand('sh', [
-      '-c',
-      `cat > ${filePath} << 'SANDBOX_EOF'
-${content}
-SANDBOX_EOF`,
-    ]);
+    // Write file content (mkdir + heredoc)
+    await writeFileViaCat(sandbox, filePath, content);
 
     // Verify the write succeeded
     const verify = await sandbox.runCommand('test', ['-f', filePath]);
