@@ -1,6 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useChatContext } from '@/lib/chat-context';
+import {
+  ChevronRightIcon,
+  FolderIcon,
+  RefreshIcon,
+  CloseSmallIcon,
+  SpinnerIcon,
+  FolderEmptyIcon,
+} from './Icons';
 
 interface FileEntry {
   path: string;
@@ -16,15 +25,7 @@ interface TreeNode {
   children: TreeNode[];
 }
 
-interface FileExplorerProps {
-  chatId: string;
-  isOpen: boolean;
-  onClose: () => void;
-  /** Incremented externally to trigger a refresh (e.g., after tool calls) */
-  refreshKey: number;
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────
+// ── FileExplorer Component ──────────────────────────────────────────
 
 function buildTree(entries: FileEntry[]): TreeNode[] {
   const root: TreeNode = {
@@ -144,19 +145,7 @@ function TreeNodeItem({ node, depth }: { node: TreeNode; depth: number }) {
               expanded ? 'rotate-90' : ''
             }`}
           >
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='12'
-              height='12'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            >
-              <polyline points='9 18 15 12 9 6' />
-            </svg>
+            <ChevronRightIcon />
           </span>
         ) : (
           <span className='w-3 flex-shrink-0' />
@@ -188,12 +177,12 @@ function TreeNodeItem({ node, depth }: { node: TreeNode; depth: number }) {
 
 // ── FileExplorer Component ──────────────────────────────────────────
 
-export function FileExplorer({
-  chatId,
-  isOpen,
-  onClose,
-  refreshKey,
-}: FileExplorerProps) {
+export function FileExplorer() {
+  const { state, actions, meta } = useChatContext();
+  const { fileExplorerOpen: isOpen } = state;
+  const { closeFileExplorer: onClose } = actions;
+  const { chatId, fileRefreshKey: refreshKey } = meta;
+
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -246,20 +235,7 @@ export function FileExplorer({
         {/* Header */}
         <div className='flex items-center justify-between px-3 py-3 border-b border-zinc-800/60 flex-shrink-0'>
           <div className='flex items-center gap-2'>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='14'
-              height='14'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              className='text-emerald-500'
-            >
-              <path d='M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' />
-            </svg>
+            <FolderIcon className='text-emerald-500' />
             <span className='text-sm font-semibold text-zinc-300'>
               Sandbox Files
             </span>
@@ -276,43 +252,14 @@ export function FileExplorer({
               title='Refresh'
               disabled={loading}
             >
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='13'
-                height='13'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                className={loading ? 'animate-spin' : ''}
-              >
-                <path d='M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' />
-                <path d='M3 3v5h5' />
-                <path d='M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16' />
-                <path d='M16 16h5v5' />
-              </svg>
+              <RefreshIcon className={loading ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={onClose}
               className='p-1.5 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors'
               title='Close'
             >
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='14'
-                height='14'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-              >
-                <path d='M18 6 6 18' />
-                <path d='m6 6 12 12' />
-              </svg>
+              <CloseSmallIcon />
             </button>
           </div>
         </div>
@@ -322,23 +269,7 @@ export function FileExplorer({
           {loading && files.length === 0 && (
             <div className='flex items-center justify-center py-8'>
               <div className='flex items-center gap-2 text-xs text-zinc-400'>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  width='14'
-                  height='14'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  className='animate-spin'
-                >
-                  <path d='M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' />
-                  <path d='M3 3v5h5' />
-                  <path d='M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16' />
-                  <path d='M16 16h5v5' />
-                </svg>
+                <SpinnerIcon className='animate-spin' />
                 Loading files…
               </div>
             </div>
@@ -350,20 +281,10 @@ export function FileExplorer({
 
           {!loading && !error && files.length === 0 && (
             <div className='flex flex-col items-center justify-center py-8 px-4 text-center'>
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='24'
-                height='24'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='1.5'
-                strokeLinecap='round'
-                strokeLinejoin='round'
+              <FolderEmptyIcon
                 className='text-zinc-700 mb-2'
-              >
-                <path d='M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' />
-              </svg>
+                strokeWidth={1.5}
+              />
               <p className='text-xs text-zinc-500'>No files yet</p>
               <p className='text-[10px] text-zinc-600 mt-1'>
                 Files created in the sandbox will appear here

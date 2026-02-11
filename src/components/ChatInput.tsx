@@ -1,5 +1,8 @@
-import { type FormEvent } from 'react';
+'use client';
+
+import { useChatContext } from '@/lib/chat-context';
 import type { Language } from '@/lib/conversations';
+import { ChevronDownIcon } from './Icons';
 
 const LANGUAGE_OPTIONS: { value: Language; label: string; icon: string }[] = [
   { value: 'javascript', label: 'JavaScript', icon: 'JS' },
@@ -7,29 +10,15 @@ const LANGUAGE_OPTIONS: { value: Language; label: string; icon: string }[] = [
   { value: 'python', label: 'Python', icon: 'PY' },
 ];
 
-interface ChatInputProps {
-  input: string;
-  onInputChange: (value: string) => void;
-  onSubmit: (e: FormEvent) => void;
-  onStop: () => void;
-  isLoading: boolean;
-  language: Language;
-  onLanguageChange: (lang: Language) => void;
-}
+export function ChatInput() {
+  const { state, actions } = useChatContext();
+  const { input, isLoading, language } = state;
+  const { setInput, handleSubmit, stop, setLanguage } = actions;
 
-export function ChatInput({
-  input,
-  onInputChange,
-  onSubmit,
-  onStop,
-  isLoading,
-  language,
-  onLanguageChange,
-}: ChatInputProps) {
   return (
     <div className='flex-shrink-0 border-t border-zinc-800 px-3 sm:px-4 py-3 sm:py-4'>
       <form
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
         className='max-w-3xl mx-auto flex gap-2 sm:gap-3'
       >
         {/* Language selector */}
@@ -40,7 +29,7 @@ export function ChatInput({
           <select
             id='lang-select'
             value={language}
-            onChange={(e) => onLanguageChange(e.target.value as Language)}
+            onChange={(e) => setLanguage(e.target.value as Language)}
             disabled={isLoading}
             className='appearance-none bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 sm:px-3 py-3 pr-7 text-xs font-mono text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent disabled:opacity-40 cursor-pointer transition-colors hover:border-zinc-600'
           >
@@ -51,20 +40,7 @@ export function ChatInput({
             ))}
           </select>
           {/* Dropdown chevron */}
-          <svg
-            className='pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-500'
-            xmlns='http://www.w3.org/2000/svg'
-            width='12'
-            height='12'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='2'
-            strokeLinecap='round'
-            strokeLinejoin='round'
-          >
-            <path d='m6 9 6 6 6-6' />
-          </svg>
+          <ChevronDownIcon className='pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-500' />
         </div>
 
         <label htmlFor='chat-input' className='sr-only'>
@@ -74,7 +50,7 @@ export function ChatInput({
           id='chat-input'
           type='text'
           value={input}
-          onChange={(e) => onInputChange(e.target.value)}
+          onChange={(e) => setInput(e.target.value)}
           placeholder='Describe a coding task…'
           className='flex-1 min-w-0 bg-zinc-900 border border-zinc-700 rounded-lg px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent placeholder-zinc-400'
           disabled={isLoading}
@@ -82,7 +58,7 @@ export function ChatInput({
         {isLoading ? (
           <button
             type='button'
-            onClick={onStop}
+            onClick={() => stop()}
             className='px-3 sm:px-5 py-3 bg-zinc-700 hover:bg-zinc-600 rounded-lg text-sm font-medium transition-colors'
           >
             Stop

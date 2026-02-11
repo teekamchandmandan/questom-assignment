@@ -1,5 +1,6 @@
 import { CopyButton } from './CopyButton';
 import { CodeBlock } from './CodeBlock';
+import { FileIcon, CheckSmallIcon } from './Icons';
 import type { WriteFileToolPart } from '@/lib/types';
 
 interface WriteFileCardProps {
@@ -53,21 +54,7 @@ export function WriteFileCard({ part }: WriteFileCardProps) {
       <div className='bg-zinc-800/60 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-3'>
         <div className='flex items-center gap-1.5 sm:gap-2 min-w-0'>
           {/* File icon */}
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            width='14'
-            height='14'
-            viewBox='0 0 24 24'
-            fill='none'
-            stroke='currentColor'
-            strokeWidth='2'
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            className='text-blue-400 flex-shrink-0'
-          >
-            <path d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z' />
-            <path d='M14 2v4a2 2 0 0 0 2 2h4' />
-          </svg>
+          <FileIcon className='text-blue-400 flex-shrink-0' />
           <span className='text-xs text-zinc-300 font-mono truncate'>
             {filePath || 'writing file…'}
           </span>
@@ -75,19 +62,7 @@ export function WriteFileCard({ part }: WriteFileCardProps) {
 
         {isDone && output?.success && (
           <span className='ml-auto text-[10px] text-emerald-400 font-medium flex items-center gap-1'>
-            <svg
-              xmlns='http://www.w3.org/2000/svg'
-              width='12'
-              height='12'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth='2.5'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            >
-              <polyline points='20 6 9 17 4 12' />
-            </svg>
+            <CheckSmallIcon strokeWidth={2.5} />
             written
           </span>
         )}

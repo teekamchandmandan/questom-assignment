@@ -1,16 +1,8 @@
 'use client';
 
-import { type Conversation, type Language } from '@/lib/conversations';
-
-interface ConversationSidebarProps {
-  conversations: Conversation[];
-  activeId: string;
-  isOpen: boolean;
-  onSelect: (convo: Conversation) => void;
-  onDelete: (id: string) => void;
-  onNewChat: () => void;
-  onClose: () => void;
-}
+import { useChatContext } from '@/lib/chat-context';
+import { type Language } from '@/lib/conversations';
+import { PlusIcon, CloseIcon, TrashIcon } from './Icons';
 
 const LANG_LABELS: Record<Language, string> = {
   javascript: 'JS',
@@ -29,25 +21,25 @@ function timeAgo(ts: number): string {
   return `${days}d ago`;
 }
 
-export function ConversationSidebar({
-  conversations,
-  activeId,
-  isOpen,
-  onSelect,
-  onDelete,
-  onNewChat,
-  onClose,
-}: ConversationSidebarProps) {
+export function ConversationSidebar() {
+  const { state, actions, meta } = useChatContext();
+  const { conversations, sidebarOpen } = state;
+  const { selectConversation, deleteConversation, newChat, closeSidebar } =
+    actions;
+  const { chatId: activeId } = meta;
   return (
     <>
       {/* Backdrop — dismisses sidebar on click */}
-      {isOpen && (
-        <div className='fixed inset-0 bg-black/50 z-30' onClick={onClose} />
+      {sidebarOpen && (
+        <div
+          className='fixed inset-0 bg-black/50 z-30'
+          onClick={closeSidebar}
+        />
       )}
 
       <aside
         className={`fixed z-40 top-0 left-0 h-full w-64 bg-zinc-950 border-r border-zinc-800/60 flex flex-col transition-[translate] duration-200 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Sidebar header */}
@@ -55,44 +47,18 @@ export function ConversationSidebar({
           <span className='text-sm font-semibold text-zinc-300'>History</span>
           <div className='flex items-center gap-1'>
             <button
-              onClick={onNewChat}
+              onClick={newChat}
               className='p-1.5 rounded-md text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 transition-colors'
               title='New Chat'
             >
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-              >
-                <path d='M12 5v14' />
-                <path d='M5 12h14' />
-              </svg>
+              <PlusIcon />
             </button>
             <button
-              onClick={onClose}
+              onClick={closeSidebar}
               className='p-1.5 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors'
               title='Close'
             >
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='16'
-                height='16'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-              >
-                <path d='M18 6 6 18' />
-                <path d='m6 6 12 12' />
-              </svg>
+              <CloseIcon />
             </button>
           </div>
         </div>
@@ -112,7 +78,7 @@ export function ConversationSidebar({
                   ? 'bg-emerald-500/10 text-emerald-400'
                   : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
               }`}
-              onClick={() => onSelect(convo)}
+              onClick={() => selectConversation(convo)}
             >
               <div className='flex-1 min-w-0'>
                 <p className='text-sm truncate'>{convo.title}</p>
@@ -134,26 +100,12 @@ export function ConversationSidebar({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDelete(convo.id);
+                  deleteConversation(convo.id);
                 }}
                 className='opacity-0 group-hover:opacity-100 p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-all'
                 title='Delete'
               >
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  width='13'
-                  height='13'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                >
-                  <path d='M3 6h18' />
-                  <path d='M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6' />
-                  <path d='M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2' />
-                </svg>
+                <TrashIcon />
               </button>
             </div>
           ))}
