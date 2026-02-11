@@ -33,10 +33,26 @@ function isRateLimited(ip: string): boolean {
   return entry.count > RATE_LIMIT_MAX;
 }
 
+// Periodically purge expired entries so the Map doesn't grow forever
+const RATE_LIMIT_CLEANUP_INTERVAL = 5 * 60_000; // every 5 min
+let lastCleanup = Date.now();
+function cleanupRateLimits() {
+  const now = Date.now();
+  if (now - lastCleanup < RATE_LIMIT_CLEANUP_INTERVAL) return;
+  lastCleanup = now;
+  for (const [ip, entry] of requestCounts) {
+    if (now > entry.resetAt) requestCounts.delete(ip);
+  }
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(req: Request) {
   // ── Rate limiting ────────────────────────────────────────────────
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  cleanupRateLimits();
   if (isRateLimited(ip)) {
     return new Response(
       JSON.stringify({
@@ -46,7 +62,16 @@ export async function POST(req: Request) {
     );
   }
 
-  const { messages, chatId, language } = await req.json();
+  let body: { messages?: unknown; chatId?: unknown; language?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON body.' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const { messages, chatId, language } = body;
 
   // ── Input validation ─────────────────────────────────────────────
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -72,7 +97,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const conversationId = typeof chatId === 'string' ? chatId : undefined;
+  const conversationId =
+    typeof chatId === 'string' && UUID_RE.test(chatId) ? chatId : undefined;
   const lang: SupportedLanguage =
     typeof language === 'string' &&
     VALID_LANGUAGES.has(language as SupportedLanguage)

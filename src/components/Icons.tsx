@@ -14,13 +14,13 @@ const defaults: IconProps = {
   viewBox: '0 0 24 24',
 };
 
-function icon(size: number, children: React.ReactNode) {
+function icon(size: number, children: React.ReactNode, name: string) {
   const Icon = ({ ...props }: IconProps) => (
     <svg width={size} height={size} {...defaults} {...props}>
       {children}
     </svg>
   );
-  Icon.displayName = 'Icon';
+  Icon.displayName = name;
   return Icon;
 }
 
@@ -33,6 +33,7 @@ export const SidebarIcon = icon(
     <rect width='18' height='18' x='3' y='3' rx='2' />
     <path d='M9 3v18' />
   </>,
+  'SidebarIcon',
 );
 
 /** Folder with plus sign */
@@ -43,6 +44,7 @@ export const FolderPlusIcon = icon(
     <path d='M12 10v6' />
     <path d='M9 13h6' />
   </>,
+  'FolderPlusIcon',
 );
 
 /** Pencil / compose */
@@ -52,6 +54,7 @@ export const PencilIcon = icon(
     <path d='M12 20h9' />
     <path d='M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.855z' />
   </>,
+  'PencilIcon',
 );
 
 /** Retry / refresh (half-circle arrow) */
@@ -61,6 +64,7 @@ export const RetryIcon = icon(
     <path d='M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' />
     <path d='M3 3v5h5' />
   </>,
+  'RetryIcon',
 );
 
 /** Full refresh (double half-circle arrows) */
@@ -72,6 +76,7 @@ export const RefreshIcon = icon(
     <path d='M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16' />
     <path d='M16 16h5v5' />
   </>,
+  'RefreshIcon',
 );
 
 /** Plus sign */
@@ -81,6 +86,7 @@ export const PlusIcon = icon(
     <path d='M12 5v14' />
     <path d='M5 12h14' />
   </>,
+  'PlusIcon',
 );
 
 /** X / close */
@@ -90,6 +96,7 @@ export const CloseIcon = icon(
     <path d='M18 6 6 18' />
     <path d='m6 6 12 12' />
   </>,
+  'CloseIcon',
 );
 
 /** Trash can */
@@ -100,16 +107,29 @@ export const TrashIcon = icon(
     <path d='M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6' />
     <path d='M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2' />
   </>,
+  'TrashIcon',
 );
 
 /** Chevron down */
-export const ChevronDownIcon = icon(12, <path d='m6 9 6 6 6-6' />);
+export const ChevronDownIcon = icon(
+  12,
+  <path d='m6 9 6 6 6-6' />,
+  'ChevronDownIcon',
+);
 
 /** Chevron right */
-export const ChevronRightIcon = icon(12, <polyline points='9 18 15 12 9 6' />);
+export const ChevronRightIcon = icon(
+  12,
+  <polyline points='9 18 15 12 9 6' />,
+  'ChevronRightIcon',
+);
 
 /** Checkmark */
-export const CheckIcon = icon(14, <polyline points='20 6 9 17 4 12' />);
+export const CheckIcon = icon(
+  14,
+  <polyline points='20 6 9 17 4 12' />,
+  'CheckIcon',
+);
 
 /** Copy / clipboard */
 export const CopyIcon = icon(
@@ -118,10 +138,15 @@ export const CopyIcon = icon(
     <rect width='14' height='14' x='8' y='8' rx='2' ry='2' />
     <path d='M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' />
   </>,
+  'CopyIcon',
 );
 
 /** Small checkmark (for success badges) */
-export const CheckSmallIcon = icon(12, <polyline points='20 6 9 17 4 12' />);
+export const CheckSmallIcon = icon(
+  12,
+  <polyline points='20 6 9 17 4 12' />,
+  'CheckSmallIcon',
+);
 
 /** Circle alert (error) */
 export const CircleAlertIcon = icon(
@@ -131,6 +156,7 @@ export const CircleAlertIcon = icon(
     <line x1='12' y1='8' x2='12' y2='12' />
     <line x1='12' y1='16' x2='12.01' y2='16' />
   </>,
+  'CircleAlertIcon',
 );
 
 /** Circle check (success) */
@@ -140,6 +166,7 @@ export const CircleCheckIcon = icon(
     <path d='M22 11.08V12a10 10 0 1 1-5.93-9.14' />
     <polyline points='22 4 12 14.01 9 11.01' />
   </>,
+  'CircleCheckIcon',
 );
 
 /** Circle info */
@@ -150,6 +177,7 @@ export const CircleInfoIcon = icon(
     <line x1='12' y1='16' x2='12' y2='12' />
     <line x1='12' y1='8' x2='12.01' y2='8' />
   </>,
+  'CircleInfoIcon',
 );
 
 /** Offline / wifi warning */
@@ -161,6 +189,7 @@ export const WifiOffIcon = icon(
     <path d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-.274.868-.656 1.686-1.132 2.44' />
     <path d='m2 2 20 20' />
   </>,
+  'WifiOffIcon',
 );
 
 /** File document */
@@ -170,12 +199,14 @@ export const FileIcon = icon(
     <path d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z' />
     <path d='M14 2v4a2 2 0 0 0 2 2h4' />
   </>,
+  'FileIcon',
 );
 
 /** Folder (plain) */
 export const FolderIcon = icon(
   14,
   <path d='M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' />,
+  'FolderIcon',
 );
 
 /** Close (14px variant for smaller contexts) */
@@ -185,6 +216,7 @@ export const CloseSmallIcon = icon(
     <path d='M18 6 6 18' />
     <path d='m6 6 12 12' />
   </>,
+  'CloseSmallIcon',
 );
 
 /** Spinner (loading refresh, 14px) */
@@ -196,12 +228,14 @@ export const SpinnerIcon = icon(
     <path d='M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16' />
     <path d='M16 16h5v5' />
   </>,
+  'SpinnerIcon',
 );
 
 /** Folder empty (24px for empty states) */
 export const FolderEmptyIcon = icon(
   24,
   <path d='M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' />,
+  'FolderEmptyIcon',
 );
 
 /** Arrow left (back navigation) */
@@ -211,4 +245,5 @@ export const ArrowLeftIcon = icon(
     <path d='m12 19-7-7 7-7' />
     <path d='M19 12H5' />
   </>,
+  'ArrowLeftIcon',
 );

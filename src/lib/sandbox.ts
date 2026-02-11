@@ -1,4 +1,5 @@
 import { Sandbox } from '@vercel/sandbox';
+import { randomBytes } from 'crypto';
 import {
   SANDBOX_TIMEOUT,
   SANDBOX_SESSION_TTL,
@@ -26,6 +27,7 @@ interface SandboxSession {
   sandbox: SandboxInstance;
   lastUsed: number;
   runtime: Runtime;
+  tsxInstalled?: boolean;
 }
 
 // Use globalThis so all Next.js API route bundles share the same Map
@@ -138,9 +140,21 @@ async function runInSandbox(
     await writeFileViaCat(sandbox, filePath, code);
   }
 
-  // For TypeScript, ensure tsx is available
+  // For TypeScript, ensure tsx is available (once per session)
   if (language === 'typescript') {
-    await sandbox.runCommand('npm', ['install', '-g', 'tsx']).catch(() => {});
+    const sessions = getSessions();
+    // Find the session for this sandbox to check / set the flag
+    let session: SandboxSession | undefined;
+    for (const s of sessions.values()) {
+      if (s.sandbox === sandbox) {
+        session = s;
+        break;
+      }
+    }
+    if (!session?.tsxInstalled) {
+      await sandbox.runCommand('npm', ['install', '-g', 'tsx']).catch(() => {});
+      if (session) session.tsxInstalled = true;
+    }
   }
 
   const args: string[] = argsForLanguage(language, code, filePath);
@@ -189,21 +203,29 @@ async function runInSandbox(
   };
 }
 
+/** Shell-escape a string by wrapping it in single quotes and escaping inner quotes. */
+function shellEscape(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
 /**
- * Write file content to the sandbox using a heredoc.
- * Shared by both runInSandbox (when filePath is given) and writeFileToSandbox.
+ * Write file content to the sandbox using a heredoc with a randomised
+ * delimiter so content containing the delimiter cannot break the write.
+ * The filePath is shell-escaped to prevent injection.
  */
 async function writeFileViaCat(
   sandbox: SandboxInstance,
   filePath: string,
   content: string,
 ): Promise<void> {
+  const delimiter = `SANDBOX_EOF_${randomBytes(8).toString('hex')}`;
+  const safePath = shellEscape(filePath);
   await sandbox.runCommand('mkdir', ['-p', filePath.replace(/\/[^/]+$/, '')]);
   await sandbox.runCommand('sh', [
     '-c',
-    `cat > ${filePath} << 'SANDBOX_EOF'
+    `cat > ${safePath} << '${delimiter}'
 ${content}
-SANDBOX_EOF`,
+${delimiter}`,
   ]);
 }
 

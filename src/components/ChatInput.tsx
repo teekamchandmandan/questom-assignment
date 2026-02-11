@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useCallback } from 'react';
 import { useChatContext } from '@/lib/chat-context';
 import type { Language } from '@/lib/conversations';
 import { ChevronDownIcon } from './Icons';
@@ -16,10 +17,38 @@ const DOT_COLORS: Record<Language, string> = {
   python: 'bg-emerald-400',
 };
 
+const MAX_ROWS = 5;
+
 export function ChatInput() {
   const { state, actions } = useChatContext();
   const { input, isLoading, language } = state;
   const { setInput, handleSubmit, stop, setLanguage } = actions;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea to content (1–MAX_ROWS lines)
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const lineHeight = 20; // ~text-sm line-height
+    const maxHeight = lineHeight * MAX_ROWS + 24; // + padding
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (input.trim() && !isLoading) {
+        handleSubmit(e as unknown as React.FormEvent);
+        // Reset height after send
+        requestAnimationFrame(() => {
+          if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+          }
+        });
+      }
+    }
+  };
 
   return (
     <div className='flex-shrink-0 border-t border-zinc-800 px-3 sm:px-4 py-3 sm:py-4'>
@@ -75,13 +104,18 @@ export function ChatInput() {
         <label htmlFor='chat-input' className='sr-only'>
           Describe a coding task
         </label>
-        <input
+        <textarea
+          ref={textareaRef}
           id='chat-input'
-          type='text'
+          rows={1}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            autoResize();
+          }}
+          onKeyDown={handleKeyDown}
           placeholder='What should we build?'
-          className='flex-1 min-w-0 bg-zinc-900 border border-zinc-700 rounded-lg px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent placeholder-zinc-400'
+          className='flex-1 min-w-0 bg-zinc-900 border border-zinc-700 rounded-lg px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent placeholder-zinc-400 resize-none leading-[20px]'
           disabled={isLoading}
         />
         {isLoading ? (

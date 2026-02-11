@@ -72,17 +72,35 @@ function ChatMessages() {
           </div>
         ))}
 
-        {isLoading && messages[messages.length - 1]?.role === 'user' && (
-          <div className='flex gap-2 sm:gap-3 animate-message-in' role='status'>
-            <div
-              className='w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-[9px] sm:text-[10px] font-bold flex-shrink-0 shadow-sm shadow-emerald-900/50'
-              aria-hidden='true'
-            >
-              AI
-            </div>
-            <div className='text-zinc-400 animate-thinking'>Working on it…</div>
-          </div>
-        )}
+        {isLoading &&
+          (() => {
+            // Show thinking indicator when waiting for the model:
+            // - After user sends a message (no AI response parts yet)
+            // - Between multi-step tool calls (AI is reasoning for next step)
+            const lastMsg = messages[messages.length - 1];
+            const showThinking =
+              lastMsg?.role === 'user' ||
+              (lastMsg?.role === 'assistant' &&
+                lastMsg.parts[lastMsg.parts.length - 1]?.type.startsWith(
+                  'tool-',
+                ));
+            return showThinking ? (
+              <div
+                className='flex gap-2 sm:gap-3 animate-message-in'
+                role='status'
+              >
+                <div
+                  className='w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-[9px] sm:text-[10px] font-bold flex-shrink-0 shadow-sm shadow-emerald-900/50'
+                  aria-hidden='true'
+                >
+                  AI
+                </div>
+                <div className='text-zinc-400 animate-thinking'>
+                  Working on it…
+                </div>
+              </div>
+            ) : null;
+          })()}
 
         {error && (
           <div

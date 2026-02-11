@@ -1,3 +1,5 @@
+import type { ToolPartState } from '@/lib/types';
+
 interface LifecycleStepProps {
   label: string;
   done: boolean;
@@ -30,13 +32,12 @@ function ChevronRight() {
 }
 
 interface LifecycleIndicatorProps {
-  state: string;
+  state: ToolPartState;
 }
 
 export function LifecycleIndicator({ state }: LifecycleIndicatorProps) {
   const isWaiting = state === 'input-streaming';
-  const isExecuting =
-    state === 'input-available' || state === 'approval-requested';
+  const isExecuting = state === 'input-available';
   const isDone = state === 'output-available';
   const isError = state === 'output-error';
 

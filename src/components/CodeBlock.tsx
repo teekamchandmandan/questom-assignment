@@ -8,6 +8,8 @@ interface CodeBlockProps {
   language?: string;
   /** Extra classes on the wrapper */
   className?: string;
+  /** When true, skip syntax highlighting (e.g. during streaming) */
+  streaming?: boolean;
 }
 
 /**
@@ -18,10 +20,13 @@ export function CodeBlock({
   code,
   language = 'text',
   className = '',
+  streaming = false,
 }: CodeBlockProps) {
   const [html, setHtml] = useState<string | null>(null);
 
   useEffect(() => {
+    // Skip heavy Shiki tokenisation while content is still streaming
+    if (streaming) return;
     let cancelled = false;
     highlightCode(code, language).then((result) => {
       if (!cancelled) setHtml(result);
@@ -29,9 +34,12 @@ export function CodeBlock({
     return () => {
       cancelled = true;
     };
-  }, [code, language]);
+  }, [code, language, streaming]);
 
-  if (!html) {
+  // Use plain fallback when streaming (html will be stale/null)
+  const showFallback = streaming || !html;
+
+  if (showFallback) {
     // Fallback while shiki loads
     return (
       <pre

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useChatContext } from '@/lib/chat-context';
 import {
   buildTree,
@@ -105,19 +105,27 @@ export function FileExplorer() {
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchFiles = useCallback(async () => {
     if (!chatId) return;
+    // Abort any in-flight fetch
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ chatId });
       if (sandboxId) params.set('sandboxId', sandboxId);
-      const res = await fetch(`/api/sandbox/files?${params}`);
+      const res = await fetch(`/api/sandbox/files?${params}`, {
+        signal: controller.signal,
+      });
       if (!res.ok) throw new Error('Failed to fetch files');
       const data = await res.json();
       setFiles(data.files ?? []);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : 'Failed to load files');
     } finally {
       setLoading(false);

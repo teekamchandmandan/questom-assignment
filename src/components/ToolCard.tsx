@@ -17,10 +17,28 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
   const code = input?.code ?? '';
   const filePath = input?.filePath;
 
-  const isExecuting =
-    state === 'input-available' || state === 'approval-requested';
+  const isExecuting = state === 'input-available';
   const isDone = state === 'output-available';
   const isError = state === 'output-error';
+
+  // ── Execution timing ──
+  const execStartRef = useRef<number | null>(null);
+  const [elapsed, setElapsed] = useState<number | null>(null);
+
+  // Capture start time when execution begins
+  useEffect(() => {
+    if (isExecuting && execStartRef.current === null) {
+      execStartRef.current = Date.now();
+    }
+  }, [isExecuting]);
+
+  // Capture elapsed once execution completes
+  useEffect(() => {
+    if ((isDone || isError) && execStartRef.current !== null) {
+      setElapsed(Date.now() - execStartRef.current);
+      execStartRef.current = null;
+    }
+  }, [isDone, isError]);
 
   // ── Real-time output streaming ──
   const [streamedStdout, setStreamedStdout] = useState('');
@@ -101,7 +119,11 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
             text={code}
             className='absolute top-2 right-2 opacity-0 group-hover/code:opacity-100 transition-opacity z-10'
           />
-          <CodeBlock code={code} language={language} />
+          <CodeBlock
+            code={code}
+            language={language}
+            streaming={state === 'input-streaming'}
+          />
         </div>
       )}
 
@@ -175,8 +197,13 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
               </pre>
             </div>
           )}
-          <div className='px-3 sm:px-4 py-2 border-t border-zinc-800 text-[10px] text-zinc-400'>
-            exit code: {output.exitCode}
+          <div className='px-3 sm:px-4 py-2 border-t border-zinc-800 text-[10px] text-zinc-400 flex items-center gap-2'>
+            <span>exit code: {output.exitCode}</span>
+            {elapsed !== null && (
+              <span className='ml-auto text-zinc-500'>
+                {(elapsed / 1000).toFixed(1)}s
+              </span>
+            )}
           </div>
         </div>
       )}

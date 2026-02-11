@@ -14,8 +14,8 @@ export function WriteFileCard({ part }: WriteFileCardProps) {
   const content = input?.content ?? '';
   const description = input?.description;
 
-  const isWriting =
-    state === 'input-available' || state === 'approval-requested';
+  const isStreaming = state === 'input-streaming';
+  const isWriting = state === 'input-available';
   const isDone = state === 'output-available';
   const isError = state === 'output-error';
 
@@ -61,7 +61,22 @@ export function WriteFileCard({ part }: WriteFileCardProps) {
             text={content}
             className='absolute top-2 right-2 opacity-0 group-hover/code:opacity-100 transition-opacity z-10'
           />
-          <CodeBlock code={content} language={language} />
+          <CodeBlock
+            code={content}
+            language={language}
+            streaming={state === 'input-streaming'}
+          />
+        </div>
+      )}
+
+      {/* Streaming indicator */}
+      {isStreaming && (
+        <div className='px-3 sm:px-4 py-3 border-t border-zinc-800 text-xs text-zinc-400 flex items-center gap-2'>
+          <span
+            className='inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin'
+            role='status'
+          />
+          Generating file…
         </div>
       )}
 

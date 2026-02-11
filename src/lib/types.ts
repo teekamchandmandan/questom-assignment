@@ -17,15 +17,16 @@ export interface RunCodeOutput {
   sandboxId?: string;
 }
 
+export type ToolPartState =
+  | 'input-streaming'
+  | 'input-available'
+  | 'output-available'
+  | 'output-error';
+
 export interface RunCodeToolPart {
   type: 'tool-runCode';
   toolCallId: string;
-  state:
-    | 'input-streaming'
-    | 'input-available'
-    | 'approval-requested'
-    | 'output-available'
-    | 'output-error';
+  state: ToolPartState;
   input?: RunCodeInput;
   output?: RunCodeOutput;
   errorText?: string;
@@ -56,12 +57,7 @@ export interface WriteFileOutput {
 export interface WriteFileToolPart {
   type: 'tool-writeFile';
   toolCallId: string;
-  state:
-    | 'input-streaming'
-    | 'input-available'
-    | 'approval-requested'
-    | 'output-available'
-    | 'output-error';
+  state: ToolPartState;
   input?: WriteFileInput;
   output?: WriteFileOutput;
   errorText?: string;

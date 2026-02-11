@@ -23,6 +23,7 @@ import {
   type Conversation,
   type Language,
 } from '@/lib/conversations';
+import { isRunCodeToolPart, isWriteFileToolPart } from '@/lib/types';
 import { useToasts, type ToastData } from '@/components/Toast';
 
 function generateId() {
@@ -145,12 +146,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     regenerate,
   } = useChat({
     transport,
-    onError: (err) => {
-      addToast(
-        err.message || 'Something went wrong. Please try again.',
-        'error',
-      );
-    },
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
@@ -160,14 +155,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setConversations(loadConversations());
   }, []);
 
-  // ── Persist conversation whenever messages change ──────────────
+  // ── Persist conversation when streaming ends or on unmount ─────
+  const pendingPersistRef = useRef(false);
   useEffect(() => {
     if (messages.length === 0) return;
+    // Mark that we have data to persist
+    pendingPersistRef.current = true;
+  }, [messages]);
+
+  // Actually write to localStorage only when status settles to 'ready'
+  // (avoids dozens of writes per second during streaming)
+  useEffect(() => {
+    if (status !== 'ready' || !pendingPersistRef.current) return;
+    pendingPersistRef.current = false;
+    const msgs = messagesRef.current;
+    if (msgs.length === 0) return;
     const convo: Conversation = {
       id: chatIdRef.current,
-      title: deriveTitle(messages),
+      title: deriveTitle(msgs),
       language,
-      messages,
+      messages: msgs,
       createdAt:
         conversations.find((c) => c.id === chatIdRef.current)?.createdAt ??
         Date.now(),
@@ -176,7 +183,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     saveConversation(convo);
     setConversations(loadConversations());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
+  }, [status]);
 
   // ── Refresh file explorer after tool calls complete ────────────
   const messagesRef = useRef(messages);
@@ -197,13 +204,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setFileRefreshKey((k) => k + 1);
         // Extract sandboxId from the latest tool result output
         for (let i = lastMsg.parts.length - 1; i >= 0; i--) {
-          const p = lastMsg.parts[i] as {
-            type: string;
-            state?: string;
-            output?: { sandboxId?: string };
-          };
+          const p = lastMsg.parts[i];
           if (
-            p.type.startsWith('tool-') &&
+            isRunCodeToolPart(p) &&
+            p.state === 'output-available' &&
+            p.output?.sandboxId
+          ) {
+            setSandboxId(p.output.sandboxId);
+            break;
+          }
+          if (
+            isWriteFileToolPart(p) &&
             p.state === 'output-available' &&
             p.output?.sandboxId
           ) {
@@ -273,11 +284,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       deleteConversation(id);
       setConversations(loadConversations());
+      addToast('Conversation deleted', 'info');
       if (id === chatIdRef.current) {
         handleNewChat();
       }
     },
-    [handleNewChat],
+    [handleNewChat, addToast],
   );
 
   return (

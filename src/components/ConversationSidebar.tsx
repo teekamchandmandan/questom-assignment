@@ -29,10 +29,10 @@ export function ConversationSidebar() {
   const { chatId: activeId } = meta;
   return (
     <>
-      {/* Backdrop — dismisses sidebar on click */}
+      {/* Backdrop — dismisses sidebar on click (mobile only) */}
       {sidebarOpen && (
         <div
-          className='fixed inset-0 bg-black/50 z-30'
+          className='fixed inset-0 bg-black/50 z-30 sm:hidden'
           onClick={closeSidebar}
         />
       )}

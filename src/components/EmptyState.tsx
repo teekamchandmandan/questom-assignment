@@ -1,8 +1,8 @@
 const EXAMPLE_PROMPTS = [
   'Calculate the first 20 Fibonacci numbers',
+  'Build a multi-file Node.js project with a config, utility module, and entry point',
   'Fetch and display data from a public API',
-  'Build a tiny HTTP server that returns JSON',
-  'Find all prime numbers up to 1,000',
+  'Create a Python script that generates ASCII art',
 ];
 
 export function EmptyState({

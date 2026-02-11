@@ -6,25 +6,7 @@ type ShikiHighlighter = Awaited<
 
 let highlighterPromise: Promise<ShikiHighlighter> | null = null;
 
-const PRELOADED_LANGS = [
-  'javascript',
-  'typescript',
-  'python',
-  'json',
-  'bash',
-  'shell',
-  'html',
-  'css',
-  'markdown',
-  'sql',
-  'yaml',
-  'xml',
-  'c',
-  'cpp',
-  'java',
-  'go',
-  'rust',
-] as const;
+const PRELOADED_LANGS = ['javascript', 'typescript', 'python'] as const;
 
 const THEME = 'vitesse-dark';
 
