@@ -237,16 +237,22 @@ Transform the working prototype into a polished, architecturally sound demo that
 - **In-memory rate limiting:** IP-based sliding window (20 requests/minute per IP). Returns 429 when exceeded. Uses `x-forwarded-for` header for proxy-aware IP detection. Resets per-window automatically.
 - All constants (`MAX_TOKENS`, `MAX_INPUT_LENGTH`, `MAX_OUTPUT_SIZE`) centralized in `constants.ts`
 
-### 23. Smart auto-scroll
+### 23. Smart auto-scroll ✅
 
-- Only auto-scroll if user is near the bottom of the chat
-- If user has scrolled up to read history, don't jump them down
-- Detect scroll position in the `useEffect`
+- Only auto-scroll if user is near the bottom of the chat (within 150px)
+- If user has scrolled up to read history, new messages don't jump them down
+- `scrollContainerRef` + `onScroll` handler tracks whether user is near bottom via `shouldAutoScrollRef`
+- Auto-scroll re-engages when user submits a message or starts a new chat
+- **Implementation details:**
+  - `page.tsx` — added `scrollContainerRef` and `shouldAutoScrollRef` refs, `handleScroll` callback that checks `scrollHeight - scrollTop - clientHeight < 150`, `useEffect` on `[messages]` that only calls `scrollIntoView` when `shouldAutoScrollRef.current` is true
+  - `handleSubmit` and `handleNewChat` both reset `shouldAutoScrollRef` to `true` so new user actions always scroll to bottom
 
-### 24. Update README
+### 24. Update README ✅
 
-- Replace default create-next-app README with project-specific documentation
-- What it does, how to run, architecture overview, screenshot/GIF
+- Replaced default create-next-app README with project-specific documentation
+- Includes: feature list, ASCII architecture diagram, project structure, setup instructions, tech stack table, example prompts
+- Covers: prerequisites, env setup (`vercel link` + `vercel env pull`), dev server, Vercel deployment
+- Documents key architectural decisions in a comparison table
 
 ---
 

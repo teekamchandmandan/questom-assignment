@@ -1,6 +1,9 @@
 import type { UIMessage } from 'ai';
 
-const STORAGE_KEY = 'sandbox-agent-conversations';
+const STORAGE_KEY = 'sandbox-agent-conversations:v1';
+
+// ── In-memory cache to avoid repeated localStorage reads/parses ────
+let cachedConversations: Conversation[] | null = null;
 
 export type Language = 'javascript' | 'python' | 'typescript';
 
@@ -16,11 +19,13 @@ export interface Conversation {
 /** Read all conversations from localStorage, sorted newest-first. */
 export function loadConversations(): Conversation[] {
   if (typeof window === 'undefined') return [];
+  if (cachedConversations) return cachedConversations;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const convos: Conversation[] = JSON.parse(raw);
-    return convos.sort((a, b) => b.updatedAt - a.updatedAt);
+    cachedConversations = convos.sort((a, b) => b.updatedAt - a.updatedAt);
+    return cachedConversations;
   } catch {
     return [];
   }
@@ -30,6 +35,7 @@ export function loadConversations(): Conversation[] {
 function persist(conversations: Conversation[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+    cachedConversations = null; // invalidate cache so next read picks up changes
   } catch {
     // localStorage full — silently ignore
   }

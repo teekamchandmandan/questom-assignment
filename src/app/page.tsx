@@ -30,6 +30,76 @@ function generateId() {
   return crypto.randomUUID();
 }
 
+// ── Hoisted static SVG icons (avoid re-creation on every render) ───
+const SidebarIcon = (
+  <svg
+    xmlns='http://www.w3.org/2000/svg'
+    width='18'
+    height='18'
+    viewBox='0 0 24 24'
+    fill='none'
+    stroke='currentColor'
+    strokeWidth='2'
+    strokeLinecap='round'
+    strokeLinejoin='round'
+  >
+    <rect width='18' height='18' x='3' y='3' rx='2' />
+    <path d='M9 3v18' />
+  </svg>
+);
+
+const FileExplorerIcon = (
+  <svg
+    xmlns='http://www.w3.org/2000/svg'
+    width='18'
+    height='18'
+    viewBox='0 0 24 24'
+    fill='none'
+    stroke='currentColor'
+    strokeWidth='2'
+    strokeLinecap='round'
+    strokeLinejoin='round'
+  >
+    <path d='M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' />
+    <path d='M12 10v6' />
+    <path d='M9 13h6' />
+  </svg>
+);
+
+const NewChatIcon = (
+  <svg
+    xmlns='http://www.w3.org/2000/svg'
+    width='14'
+    height='14'
+    viewBox='0 0 24 24'
+    fill='none'
+    stroke='currentColor'
+    strokeWidth='2'
+    strokeLinecap='round'
+    strokeLinejoin='round'
+  >
+    <path d='M12 20h9' />
+    <path d='M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.855z' />
+  </svg>
+);
+
+const RetryIcon = (
+  <svg
+    xmlns='http://www.w3.org/2000/svg'
+    width='12'
+    height='12'
+    viewBox='0 0 24 24'
+    fill='none'
+    stroke='currentColor'
+    strokeWidth='2'
+    strokeLinecap='round'
+    strokeLinejoin='round'
+  >
+    <path d='M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' />
+    <path d='M3 3v5h5' />
+  </svg>
+);
+
 export default function Chat() {
   const [input, setInput] = useState('');
   const [language, setLanguage] = useState<Language>('javascript');
@@ -40,6 +110,8 @@ export default function Chat() {
 
   const chatIdRef = useRef(generateId());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
   const languageRef = useRef(language);
   const { toasts, addToast, dismissToast } = useToasts();
 
@@ -105,16 +177,21 @@ export default function Chat() {
   }, [messages]);
 
   // ── Refresh file explorer after tool calls complete ────────────
+  // Use a ref for messages so the effect only re-runs when `status`
+  // changes — not on every streamed token that mutates `messages`.
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const prevStatusRef = useRef(status);
   useEffect(() => {
     // When status transitions from streaming/submitted → ready, a response finished
+    const msgs = messagesRef.current;
     if (
       prevStatusRef.current !== 'ready' &&
       status === 'ready' &&
-      messages.length > 0
+      msgs.length > 0
     ) {
       // Check if the latest assistant message has any tool parts
-      const lastMsg = messages[messages.length - 1];
+      const lastMsg = msgs[msgs.length - 1];
       const hasToolParts = lastMsg?.parts?.some((p: { type: string }) =>
         p.type.startsWith('tool-'),
       );
@@ -123,11 +200,21 @@ export default function Chat() {
       }
     }
     prevStatusRef.current = status;
-  }, [status, messages]);
+  }, [status]);
 
-  // ── Scroll to bottom on new messages ───────────────────────────
+  // ── Smart auto-scroll: only scroll if user is near the bottom ──
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    // "Near bottom" = within 150px of the bottom edge
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    shouldAutoScrollRef.current = distanceFromBottom < 150;
+  }, []);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (shouldAutoScrollRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -135,6 +222,7 @@ export default function Chat() {
     const text = input.trim();
     if (!text || isLoading) return;
     setInput('');
+    shouldAutoScrollRef.current = true;
     await sendMessage({ text });
   };
 
@@ -142,6 +230,7 @@ export default function Chat() {
     setMessages([]);
     setInput('');
     chatIdRef.current = generateId();
+    shouldAutoScrollRef.current = true;
     setSidebarOpen(false);
     setFileExplorerOpen(false);
     setFileRefreshKey(0);
@@ -199,20 +288,7 @@ export default function Chat() {
               title='Toggle history'
               aria-label='Toggle conversation history'
             >
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                width='18'
-                height='18'
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-              >
-                <rect width='18' height='18' x='3' y='3' rx='2' />
-                <path d='M9 3v18' />
-              </svg>
+              {SidebarIcon}
             </button>
             <div className='min-w-0'>
               <h1 className='text-base sm:text-lg font-bold tracking-tight'>
@@ -237,21 +313,7 @@ export default function Chat() {
                 title='Toggle file explorer'
                 aria-label='Toggle file explorer'
               >
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  width='18'
-                  height='18'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                >
-                  <path d='M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z' />
-                  <path d='M12 10v6' />
-                  <path d='M9 13h6' />
-                </svg>
+                {FileExplorerIcon}
               </button>
             )}
             {messages.length > 0 && (
@@ -260,20 +322,7 @@ export default function Chat() {
                 disabled={isLoading}
                 className='flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg border border-zinc-700 text-zinc-300 hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex-shrink-0'
               >
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  width='14'
-                  height='14'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                >
-                  <path d='M12 20h9' />
-                  <path d='M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.855z' />
-                </svg>
+                {NewChatIcon}
                 New Chat
               </button>
             )}
@@ -281,7 +330,11 @@ export default function Chat() {
         </header>
 
         {/* Messages */}
-        <div className='flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-8'>
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className='flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-8'
+        >
           <div
             className='max-w-3xl mx-auto space-y-4 sm:space-y-5'
             aria-live='polite'
@@ -296,11 +349,9 @@ export default function Chat() {
             )}
 
             {messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                chatId={chatIdRef.current}
-              />
+              <div key={message.id} className='message-item'>
+                <ChatMessage message={message} chatId={chatIdRef.current} />
+              </div>
             ))}
 
             {isLoading && messages[messages.length - 1]?.role === 'user' && (
@@ -328,20 +379,7 @@ export default function Chat() {
                   onClick={() => regenerate()}
                   className='flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-md bg-red-900/60 hover:bg-red-800/60 text-red-200 border border-red-700/50 transition-colors flex items-center gap-1.5'
                 >
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    width='12'
-                    height='12'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                  >
-                    <path d='M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' />
-                    <path d='M3 3v5h5' />
-                  </svg>
+                  {RetryIcon}
                   Retry
                 </button>
               </div>

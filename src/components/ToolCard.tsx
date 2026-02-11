@@ -27,11 +27,19 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
   const [streamedStderr, setStreamedStderr] = useState('');
   const streamEndRef = useRef<HTMLPreElement>(null);
 
-  useEffect(() => {
-    if (!isExecuting || !chatId) return;
-
+  // Reset streamed output when a new execution starts (React docs:
+  // "adjusting state during rendering" — avoids setState-in-effect).
+  const [prevIsExecuting, setPrevIsExecuting] = useState(false);
+  if (isExecuting && !prevIsExecuting) {
     setStreamedStdout('');
     setStreamedStderr('');
+  }
+  if (isExecuting !== prevIsExecuting) {
+    setPrevIsExecuting(isExecuting);
+  }
+
+  useEffect(() => {
+    if (!isExecuting || !chatId) return;
 
     const eventSource = new EventSource(
       `/api/sandbox/stream?chatId=${encodeURIComponent(chatId)}`,
@@ -67,8 +75,6 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
   useEffect(() => {
     streamEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [streamedStdout, streamedStderr]);
-
-  const hasStreamedOutput = streamedStdout || streamedStderr;
 
   return (
     <div className='border border-zinc-700/80 rounded-lg overflow-hidden my-2 animate-card-in shadow-lg shadow-black/20'>

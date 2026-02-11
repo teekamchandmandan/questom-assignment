@@ -34,11 +34,6 @@ function languageFromPath(filePath: string): string {
   return map[ext ?? ''] ?? 'plaintext';
 }
 
-/** Extract just the filename from a full path */
-function filenameFromPath(filePath: string): string {
-  return filePath.split('/').pop() ?? filePath;
-}
-
 export function WriteFileCard({ part }: WriteFileCardProps) {
   const { state, input, output, errorText } = part;
   const filePath = input?.filePath ?? '';

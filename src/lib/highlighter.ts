@@ -1,6 +1,10 @@
-import { createHighlighter, type Highlighter } from 'shiki';
+// Dynamic import — keeps shiki (~1.6MB) out of the initial client bundle.
+// It loads on-demand when highlightCode() is first called.
+type ShikiHighlighter = Awaited<
+  ReturnType<(typeof import('shiki'))['createHighlighter']>
+>;
 
-let highlighterPromise: Promise<Highlighter> | null = null;
+let highlighterPromise: Promise<ShikiHighlighter> | null = null;
 
 const PRELOADED_LANGS = [
   'javascript',
@@ -24,12 +28,14 @@ const PRELOADED_LANGS = [
 
 const THEME = 'vitesse-dark';
 
-function getHighlighter(): Promise<Highlighter> {
+function getHighlighter(): Promise<ShikiHighlighter> {
   if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
-      themes: [THEME],
-      langs: [...PRELOADED_LANGS],
-    });
+    highlighterPromise = import('shiki').then(({ createHighlighter }) =>
+      createHighlighter({
+        themes: [THEME],
+        langs: [...PRELOADED_LANGS],
+      }),
+    );
   }
   return highlighterPromise;
 }
@@ -60,7 +66,7 @@ export async function highlightCode(
     // Try to load the language dynamically
     try {
       await highlighter.loadLanguage(
-        resolved as Parameters<Highlighter['loadLanguage']>[0],
+        resolved as Parameters<ShikiHighlighter['loadLanguage']>[0],
       );
     } catch {
       // If it fails, fall back to plain text

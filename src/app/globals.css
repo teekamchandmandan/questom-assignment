@@ -110,3 +110,9 @@ body {
 .animate-toast-in {
   animation: toast-in 0.3s ease-out both;
 }
+
+/* Defer rendering of off-screen chat messages for long conversations */
+.message-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 80px;
+}
