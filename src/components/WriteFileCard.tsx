@@ -63,7 +63,7 @@ export function WriteFileCard({ part }: WriteFileCardProps) {
         {isDone && output?.success && (
           <span className='ml-auto text-[10px] text-emerald-400 font-medium flex items-center gap-1'>
             <CheckSmallIcon strokeWidth={2.5} />
-            written
+            saved
           </span>
         )}
 
@@ -99,7 +99,7 @@ export function WriteFileCard({ part }: WriteFileCardProps) {
             className='inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin'
             role='status'
           />
-          Writing to sandbox…
+          Writing file…
         </div>
       )}
 

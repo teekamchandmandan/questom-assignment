@@ -51,7 +51,7 @@ export function ChatInput() {
           type='text'
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder='Describe a coding task…'
+          placeholder='What should we build?'
           className='flex-1 min-w-0 bg-zinc-900 border border-zinc-700 rounded-lg px-3 sm:px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent placeholder-zinc-400'
           disabled={isLoading}
         />

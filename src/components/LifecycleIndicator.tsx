@@ -42,16 +42,16 @@ export function LifecycleIndicator({ state }: LifecycleIndicatorProps) {
 
   return (
     <div className='flex items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs'>
-      <LifecycleStep label='Sandbox' done={!isWaiting} active={isWaiting} />
+      <LifecycleStep label='Preparing' done={!isWaiting} active={isWaiting} />
       <ChevronRight />
       <LifecycleStep
-        label='Running'
+        label='Executing'
         done={isDone || isError}
         active={isExecuting}
       />
       <ChevronRight />
       <LifecycleStep
-        label={isError ? 'Error' : 'Result'}
+        label={isError ? 'Failed' : 'Done'}
         done={isDone || isError}
         active={false}
       />

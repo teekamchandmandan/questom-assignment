@@ -113,7 +113,7 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
               className='inline-block w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin'
               role='status'
             />
-            Executing in sandbox…
+            Running…
           </div>
 
           {/* Streamed stdout (real-time) */}

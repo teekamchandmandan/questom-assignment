@@ -8,17 +8,17 @@ Next.js 16 App Router chat application. An OpenAI agent (GPT-5 mini) generates a
 
 **Key files:**
 
-| File | Responsibility |
-|---|---|
-| `src/lib/chat-context.tsx` | Single `ChatProvider` context with `{ state, actions, meta }` pattern; all chat state lives here |
-| `src/lib/sandbox.ts` | Sandbox session manager (`Map` + TTL keyed by `conversationId:runtime`); `executeCode()`, `writeFileToSandbox()`, `listSandboxFiles()` |
-| `src/lib/constants.ts` | All tunables: `MODEL_NAME`, timeouts, max tokens, `getSystemPrompt()` factory |
-| `src/lib/types.ts` | Tool part interfaces + type guards (`RunCodeToolPart`, `WriteFileToolPart`, `isRunCodeToolPart()`) |
-| `src/lib/output-stream.ts` | In-memory `EventEmitter` pub/sub for real-time stdout/stderr streaming |
-| `src/lib/conversations.ts` | localStorage CRUD for conversations (key: `sandbox-agent-conversations:v1`) |
-| `src/app/api/chat/route.ts` | `streamText` with `convertToModelMessages()`, rate limiter, input validation |
-| `src/app/api/sandbox/stream/route.ts` | SSE endpoint — subscribes to `outputManager` for real-time output |
-| `src/app/api/sandbox/files/route.ts` | GET endpoint — returns sandbox file tree for the `FileExplorer` panel |
+| File                                  | Responsibility                                                                                                                         |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/chat-context.tsx`            | Single `ChatProvider` context with `{ state, actions, meta }` pattern; all chat state lives here                                       |
+| `src/lib/sandbox.ts`                  | Sandbox session manager (`Map` + TTL keyed by `conversationId:runtime`); `executeCode()`, `writeFileToSandbox()`, `listSandboxFiles()` |
+| `src/lib/constants.ts`                | All tunables: `MODEL_NAME`, timeouts, max tokens, `getSystemPrompt()` factory                                                          |
+| `src/lib/types.ts`                    | Tool part interfaces + type guards (`RunCodeToolPart`, `WriteFileToolPart`, `isRunCodeToolPart()`)                                     |
+| `src/lib/output-stream.ts`            | In-memory `EventEmitter` pub/sub for real-time stdout/stderr streaming                                                                 |
+| `src/lib/conversations.ts`            | localStorage CRUD for conversations (key: `sandbox-agent-conversations:v1`)                                                            |
+| `src/app/api/chat/route.ts`           | `streamText` with `convertToModelMessages()`, rate limiter, input validation                                                           |
+| `src/app/api/sandbox/stream/route.ts` | SSE endpoint — subscribes to `outputManager` for real-time output                                                                      |
+| `src/app/api/sandbox/files/route.ts`  | GET endpoint — returns sandbox file tree for the `FileExplorer` panel                                                                  |
 
 ## AI SDK v6 Conventions
 
@@ -37,10 +37,16 @@ This project uses AI SDK **v6** (package `ai@6.x`) with **Zod v4**. Critical dif
 The `ChatProvider` uses `DefaultChatTransport` with a `body()` function (not a static object) so that `chatId` and `language` are read from refs at send-time, surviving chat resets:
 
 ```ts
-const transport = useMemo(() =>
-  new DefaultChatTransport({
-    body: () => ({ chatId: chatIdRef.current, language: languageRef.current }),
-  }), []);
+const transport = useMemo(
+  () =>
+    new DefaultChatTransport({
+      body: () => ({
+        chatId: chatIdRef.current,
+        language: languageRef.current,
+      }),
+    }),
+  [],
+);
 ```
 
 This closure pattern is intentional — a static `body` object would go stale after `newChat()` resets the `chatId`.
@@ -72,6 +78,7 @@ This closure pattern is intentional — a static `body` object would go stale af
 ## Sandbox Session Management
 
 Sandboxes are reused across tool calls within a conversation via `src/lib/sandbox.ts`:
+
 - **Session key:** `${conversationId}:${runtime}` — each runtime (`node24`, `python3.13`) gets its own sandbox
 - **TTL:** `SANDBOX_SESSION_TTL` (5 min idle) — a `setInterval` cleanup runs every 60s
 - **Error recovery:** If a sandbox dies (timeout/OOM), the catch block in `executeCode()` deletes the session so the next call creates a fresh one
@@ -92,15 +99,15 @@ Real-time stdout/stderr uses an in-memory pub/sub (`src/lib/output-stream.ts`) +
 
 All limits are defined in `src/lib/constants.ts`:
 
-| Limit | Value | Purpose |
-|---|---|---|
-| Rate limit | 20 req/min per IP | In-memory Map in `route.ts`; resets per 60s window |
-| Input length | 10,000 chars | Last user message validated server-side |
-| Output truncation | 50,000 chars | `truncateOutput()` in `sandbox.ts` caps stdout/stderr |
-| Model output | 4,096 tokens | `maxOutputTokens` in `streamText` call |
-| Max tool steps | 5 | `stopWhen: stepCountIs(MAX_STEPS)` — prevents infinite loops |
-| Sandbox timeout | 5 min | Sandbox lifetime via `Sandbox.create({ timeout })` |
-| Session idle TTL | 5 min | Cleanup timer removes idle sessions |
+| Limit             | Value             | Purpose                                                      |
+| ----------------- | ----------------- | ------------------------------------------------------------ |
+| Rate limit        | 20 req/min per IP | In-memory Map in `route.ts`; resets per 60s window           |
+| Input length      | 10,000 chars      | Last user message validated server-side                      |
+| Output truncation | 50,000 chars      | `truncateOutput()` in `sandbox.ts` caps stdout/stderr        |
+| Model output      | 4,096 tokens      | `maxOutputTokens` in `streamText` call                       |
+| Max tool steps    | 5                 | `stopWhen: stepCountIs(MAX_STEPS)` — prevents infinite loops |
+| Sandbox timeout   | 5 min             | Sandbox lifetime via `Sandbox.create({ timeout })`           |
+| Session idle TTL  | 5 min             | Cleanup timer removes idle sessions                          |
 
 When adding features, preserve these limits. The rate limiter is deliberately simple (in-memory Map) — it resets on server restart, which is acceptable for a demo.
 

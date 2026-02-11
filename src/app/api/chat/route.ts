@@ -39,7 +39,9 @@ export async function POST(req: Request) {
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
   if (isRateLimited(ip)) {
     return new Response(
-      JSON.stringify({ error: 'Too many requests. Please wait a moment.' }),
+      JSON.stringify({
+        error: 'Slow down — too many requests. Try again in a minute.',
+      }),
       { status: 429, headers: { 'Content-Type': 'application/json' } },
     );
   }
@@ -48,10 +50,10 @@ export async function POST(req: Request) {
 
   // ── Input validation ─────────────────────────────────────────────
   if (!Array.isArray(messages) || messages.length === 0) {
-    return new Response(
-      JSON.stringify({ error: 'Messages array is required.' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    );
+    return new Response(JSON.stringify({ error: 'No messages provided.' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // Validate last user message length

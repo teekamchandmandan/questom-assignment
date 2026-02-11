@@ -287,7 +287,7 @@ export function FileExplorer() {
               />
               <p className='text-xs text-zinc-500'>No files yet</p>
               <p className='text-[10px] text-zinc-600 mt-1'>
-                Files created in the sandbox will appear here
+                Files will appear here as the agent creates them
               </p>
             </div>
           )}

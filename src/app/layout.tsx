@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Sandbox Agent',
-  description: 'AI-powered code execution in sandboxed microVMs',
+  description:
+    'Describe a task and let AI write, run, and debug code in a secure sandbox',
   icons: { icon: '/favicon.svg' },
 };
 

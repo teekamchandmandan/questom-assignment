@@ -67,7 +67,7 @@ export function ConversationSidebar() {
         <div className='flex-1 overflow-y-auto py-1'>
           {conversations.length === 0 && (
             <p className='text-xs text-zinc-500 text-center mt-8'>
-              No conversations yet
+              No conversations yet — start one!
             </p>
           )}
           {conversations.map((convo) => (

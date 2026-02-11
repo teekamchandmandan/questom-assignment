@@ -80,7 +80,7 @@ function ChatMessages() {
             >
               AI
             </div>
-            <div className='text-zinc-400 animate-thinking'>Thinking…</div>
+            <div className='text-zinc-400 animate-thinking'>Working on it…</div>
           </div>
         )}
 

@@ -30,10 +30,7 @@ export function NetworkBanner() {
       className='flex-shrink-0 bg-amber-950/80 border-b border-amber-800/50 px-4 py-2 flex items-center justify-center gap-2 text-sm text-amber-300 animate-message-in'
     >
       <WifiOffIcon className='flex-shrink-0' />
-      <span>
-        You&apos;re offline — messages won&apos;t send until the connection is
-        restored
-      </span>
+      <span>You&apos;re offline — reconnect to continue</span>
     </div>
   );
 }

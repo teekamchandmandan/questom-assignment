@@ -25,8 +25,8 @@ export function ChatHeader() {
             Sandbox Agent
           </h1>
           <p className='text-xs text-zinc-400 mt-0.5 tracking-wide hidden sm:block'>
-            Describe a task — the agent writes code and executes it in a
-            sandboxed microVM
+            Describe a task and the agent will write, run, and iterate on code
+            in a secure sandbox
           </p>
         </div>
       </div>
