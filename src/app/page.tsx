@@ -1,16 +1,34 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { DefaultChatTransport } from 'ai';
+import { useState, useRef, useEffect, useMemo, type FormEvent } from 'react';
 import { ChatMessage } from '@/components/ChatMessage';
 import { ChatInput } from '@/components/ChatInput';
 import { EmptyState } from '@/components/EmptyState';
 
+function generateId() {
+  return crypto.randomUUID();
+}
+
 export default function Chat() {
   const [input, setInput] = useState('');
+  const chatIdRef = useRef(generateId());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { messages, setMessages, sendMessage, status, error, stop } = useChat();
+  // Transport uses a function for `body` so it always reads the
+  // latest chatIdRef value, even after a "New Chat" reset.
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        body: () => ({ chatId: chatIdRef.current }),
+      }),
+    [],
+  );
+
+  const { messages, setMessages, sendMessage, status, error, stop } = useChat({
+    transport,
+  });
 
   const isLoading = status === 'submitted' || status === 'streaming';
 
@@ -48,6 +66,7 @@ export default function Chat() {
             onClick={() => {
               setMessages([]);
               setInput('');
+              chatIdRef.current = generateId();
             }}
             disabled={isLoading}
             className='flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm rounded-lg border border-zinc-700 text-zinc-300 hover:border-emerald-500 hover:text-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex-shrink-0'

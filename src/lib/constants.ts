@@ -1,6 +1,7 @@
 export const MODEL_NAME = 'gpt-5-mini';
 export const MAX_STEPS = 5;
-export const SANDBOX_TIMEOUT = 30_000;
+export const SANDBOX_TIMEOUT = 300_000; // 5 min — sandbox lifetime (reused across calls)
+export const SANDBOX_SESSION_TTL = 300_000; // 5 min idle TTL before cleanup
 
 export const SYSTEM_PROMPT = `You are a code execution assistant. When a user asks you to solve a coding task:
 
@@ -12,4 +13,6 @@ export const SYSTEM_PROMPT = `You are a code execution assistant. When a user as
 
 Always use the runCode tool to execute code — never just show code without running it.
 Default to JavaScript unless the user asks for Python specifically.
-Keep code concise and self-contained. Print results to stdout.`;
+Keep code concise and self-contained. Print results to stdout.
+
+IMPORTANT: The sandbox filesystem persists across tool calls within the same conversation. You can create files in one step and read/run them in later steps. Use this to build up multi-file programs incrementally when appropriate.`;
