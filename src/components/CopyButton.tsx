@@ -36,7 +36,7 @@ export function CopyButton({ text, className = '' }: CopyButtonProps) {
       className={`p-1.5 rounded-md transition-colors ${
         copied
           ? 'text-emerald-400 bg-emerald-400/10'
-          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50'
+          : 'text-zinc-400 hover:text-zinc-300 hover:bg-zinc-700/50'
       } ${className}`}
       title={copied ? 'Copied!' : 'Copy to clipboard'}
       aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}

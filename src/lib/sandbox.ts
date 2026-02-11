@@ -78,13 +78,34 @@ async function getOrCreateSandbox(
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function commandForLanguage(language: 'javascript' | 'python'): string {
-  return language === 'python' ? 'python3' : 'node';
+type ExecLanguage = 'javascript' | 'python' | 'typescript';
+
+function commandForLanguage(language: ExecLanguage): string {
+  switch (language) {
+    case 'python':
+      return 'python3';
+    case 'typescript':
+      return 'npx';
+    default:
+      return 'node';
+  }
+}
+
+function argsForLanguage(
+  language: ExecLanguage,
+  code: string,
+  filePath?: string,
+): string[] {
+  if (language === 'typescript') {
+    // Use tsx runner; if filePath given execute the file, otherwise inline eval
+    return filePath ? ['tsx', filePath] : ['tsx', '-e', code];
+  }
+  return filePath ? [filePath] : ['-e', code];
 }
 
 async function runInSandbox(
   sandbox: SandboxInstance,
-  language: 'javascript' | 'python',
+  language: ExecLanguage,
   code: string,
   filePath?: string,
   streamId?: string,
@@ -100,7 +121,12 @@ SANDBOX_EOF`,
     ]);
   }
 
-  const args: string[] = filePath ? [filePath] : ['-e', code];
+  // For TypeScript, ensure tsx is available
+  if (language === 'typescript') {
+    await sandbox.runCommand('npm', ['install', '-g', 'tsx']).catch(() => {});
+  }
+
+  const args: string[] = argsForLanguage(language, code, filePath);
 
   // Streaming mode: use detached command + logs() for real-time output
   if (streamId) {
@@ -199,7 +225,7 @@ SANDBOX_EOF`,
 }
 
 export async function executeCode(
-  language: 'javascript' | 'python',
+  language: ExecLanguage,
   code: string,
   conversationId?: string,
   filePath?: string,
@@ -233,10 +259,83 @@ export async function executeCode(
   }
 }
 
+// ── File listing ─────────────────────────────────────────────────────
+
+export interface FileEntry {
+  path: string;
+  type: 'file' | 'directory';
+  size?: number;
+}
+
+/**
+ * Lists all user-created files in the sandbox for a given conversation.
+ * Returns a flat list of { path, type, size } entries rooted at /vercel/sandbox/.
+ */
+export async function listSandboxFiles(
+  conversationId: string,
+): Promise<FileEntry[]> {
+  const key = sessionKey(conversationId, 'node24');
+  const session = sessions.get(key);
+  if (!session) {
+    // Also check python runtime
+    const pyKey = sessionKey(conversationId, 'python3.13');
+    const pySession = sessions.get(pyKey);
+    if (!pySession) return [];
+    return listFilesInSandbox(pySession.sandbox);
+  }
+  return listFilesInSandbox(session.sandbox);
+}
+
+async function listFilesInSandbox(
+  sandbox: SandboxInstance,
+): Promise<FileEntry[]> {
+  try {
+    // List all files/dirs under /vercel/sandbox, excluding node_modules and .npm
+    const result = await sandbox.runCommand('find', [
+      '/vercel/sandbox',
+      '-not',
+      '-path',
+      '*/node_modules/*',
+      '-not',
+      '-path',
+      '*/.npm/*',
+      '-not',
+      '-path',
+      '*/package-lock.json',
+      '-printf',
+      '%y %s %p\n',
+    ]);
+    const stdout = await result.stdout();
+    if (!stdout.trim()) return [];
+
+    const entries: FileEntry[] = [];
+    for (const line of stdout.trim().split('\n')) {
+      const match = line.match(/^(\w)\s+(\d+)\s+(.+)$/);
+      if (!match) continue;
+      const [, typeChar, sizeStr, filePath] = match;
+      // Skip the sandbox root itself
+      if (filePath === '/vercel/sandbox') continue;
+      entries.push({
+        path: filePath,
+        type: typeChar === 'd' ? 'directory' : 'file',
+        size: parseInt(sizeStr, 10),
+      });
+    }
+
+    return entries.sort((a, b) => {
+      // Directories first, then alphabetical
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+      return a.path.localeCompare(b.path);
+    });
+  } catch {
+    return [];
+  }
+}
+
 /** One-off sandbox for requests without a conversation ID (backward compat) */
 async function executeOneOff(
   runtime: Runtime,
-  language: 'javascript' | 'python',
+  language: ExecLanguage,
   code: string,
   filePath?: string,
 ): Promise<CodeExecutionResult> {

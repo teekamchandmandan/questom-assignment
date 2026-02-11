@@ -5,7 +5,7 @@
  */
 
 export interface RunCodeInput {
-  language?: string;
+  language?: 'javascript' | 'python' | 'typescript';
   code?: string;
   filePath?: string;
 }

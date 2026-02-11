@@ -11,12 +11,12 @@ export function EmptyState({
   onPromptClick: (prompt: string) => void;
 }) {
   return (
-    <div className='text-center text-zinc-600 mt-16 sm:mt-32 space-y-4 sm:space-y-6 animate-fade-in-up px-2'>
+    <div className='text-center text-zinc-500 mt-16 sm:mt-32 space-y-4 sm:space-y-6 animate-fade-in-up px-2'>
       <p className='text-3xl'>&#x1F4E6;</p>
       <p className='text-xl font-semibold text-zinc-300 tracking-tight'>
         Code Executor Sandbox
       </p>
-      <p className='text-sm text-zinc-500'>Pick a prompt or type your own</p>
+      <p className='text-sm text-zinc-400'>Pick a prompt or type your own</p>
       <div className='flex flex-wrap justify-center gap-2 max-w-xl mx-auto px-2'>
         {EXAMPLE_PROMPTS.map((prompt) => (
           <button

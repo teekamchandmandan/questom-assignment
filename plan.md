@@ -179,31 +179,49 @@ Transform the working prototype into a polished, architecturally sound demo that
 - **Graceful fallback:** In serverless environments where the SSE route runs in a separate instance (no shared memory), EventSource silently fails — the ToolCard shows the spinner and output appears all at once when execution completes (original behavior). No degraded experience.
 - **UX impact:** For long-running scripts, users see stdout/stderr lines appear in real-time during execution instead of waiting for the full result
 
-### 17. Conversation persistence (localStorage)
+### 17. Conversation persistence (localStorage) ✅
 
-- Save conversations to `localStorage`
-- Add a sidebar or dropdown to switch between saved conversations
+- Save conversations to `localStorage` — auto-persisted whenever messages change
+- Added a collapsible sidebar (`ConversationSidebar.tsx`) for browsing/switching/deleting past conversations
+- **Implementation details:**
+  - `lib/conversations.ts` — `Conversation` type (id, title, language, messages, timestamps), `loadConversations()`, `saveConversation()`, `deleteConversation()`, `deriveTitle()` (auto-derives from first user message, truncated to 50 chars)
+  - `components/ConversationSidebar.tsx` — fixed sidebar with conversation list, time-ago labels, language badge (JS/TS/PY), delete button on hover, new-chat button, mobile backdrop overlay
+  - `page.tsx` — loads conversations on mount, auto-saves on message changes, sidebar toggle button in header, `handleSelectConversation` restores messages + language + chatId, `handleDeleteConversation` with active-chat fallback
+- Sidebar shows on click of panel icon in header; closes on mobile via backdrop tap
 - Purely client-side — no database dependency
 
-### 18. Language selector
+### 18. Language selector ✅
 
-- Small dropdown in the input bar to switch between JavaScript / Python / TypeScript
-- Currently hardcoded to default JS in the system prompt
+- Added compact dropdown in the input bar to switch between JavaScript / Python / TypeScript
+- **Implementation details:**
+  - `components/ChatInput.tsx` — added `<select>` dropdown with JS/TS/PY options, custom chevron icon, disabled during streaming, `language` and `onLanguageChange` props
+  - `lib/constants.ts` — `SupportedLanguage` type, `getSystemPrompt(language)` function with per-language instructions (JS: ES2023+, PY: Python 3 idioms, TS: strong typing + tsx runner), kept `SYSTEM_PROMPT` export for backward compat
+  - `app/api/chat/route.ts` — extracts `language` from request body, validates against allowed set, passes to `getSystemPrompt()`, updated `runCode` tool's `inputSchema` enum to include `'typescript'`
+  - `lib/sandbox.ts` — added `ExecLanguage` type with `'typescript'`, `argsForLanguage()` helper for tsx-based execution, auto-installs `tsx` globally in sandbox on first TS run
+  - `lib/types.ts` — updated `RunCodeInput.language` to `'javascript' | 'python' | 'typescript'`
+  - `page.tsx` — `language` state + `languageRef` for transport body, passed to `ChatInput`, persisted with conversations, restored on conversation switch
+- Language selection is saved per conversation and restored when switching back
 
-### 19. File explorer panel (if sandbox reuse works)
+### 19. File explorer panel (if sandbox reuse works) ✅
 
 - Collapsible sidebar showing the sandbox's file tree
 - Makes the multi-step coding experience tangible and visible
 - Fetched from sandbox after each tool call
+- **Implementation details:**
+  - `lib/sandbox.ts` — added `listSandboxFiles(conversationId)` function that runs `find` in the active sandbox, excluding `node_modules`/`.npm`/`package-lock.json`. Returns flat `FileEntry[]` array with `path`, `type`, `size`. Checks both `node24` and `python3.13` runtimes for the given conversation.
+  - `app/api/sandbox/files/route.ts` — GET endpoint accepting `?chatId=<id>`, returns JSON `{ files: FileEntry[] }` from the session's sandbox.
+  - `components/FileExplorer.tsx` — right-side collapsible panel with tree-view rendering. Converts flat file list to nested `TreeNode` tree. Features: folder expand/collapse, file-type emoji icons (JS, TS, PY, JSON, HTML, CSS, etc.), file sizes, directory-first sorting, refresh button with spin animation, empty state, loading spinner, mobile backdrop overlay. Auto-fetches when panel opens or `refreshKey` increments.
+  - `page.tsx` — added `fileExplorerOpen` state + `fileRefreshKey` counter. File explorer toggle button in header (folder icon, emerald highlight when active, only visible when messages exist). `refreshKey` auto-increments when streaming completes and the latest message contains tool parts. Resets on new chat, refreshes on conversation switch.
 
-### 20. Accessibility fixes
+### 20. Accessibility fixes ✅
 
-- Add `<label>` for the chat input (visually hidden is fine)
-- `aria-hidden="true"` on decorative avatar elements
-- `aria-live="polite"` on the message list for screen reader announcements
-- Fix `text-zinc-500` contrast on dark background → bump to `text-zinc-400`
-- Add `role="status"` to the "Thinking…" indicator
-- Keyboard shortcut hints (e.g., `⌘ Enter` to send)
+- Add `<label>` for the chat input (visually hidden is fine) — already present
+- `aria-hidden="true"` on decorative avatar elements — already present
+- `aria-live="polite"` on the message list for screen reader announcements — already present
+- Fix `text-zinc-500` contrast on dark background → bumped to `text-zinc-400` across all components (ToolCard, EmptyState, CopyButton, FileExplorer, ConversationSidebar, LifecycleIndicator); also bumped `text-zinc-600` → `text-zinc-500` and `text-zinc-700` → `text-zinc-600` for secondary/tertiary text; fixed `placeholder-zinc-500` → `placeholder-zinc-400`
+- Add `role="status"` to the "Thinking…" indicator — already present
+- Keyboard shortcut hint: added `↵` (return symbol) next to "Send" button label, hidden on mobile (`hidden sm:inline-flex`)
+- Added `aria-label` to icon-only toggle buttons (sidebar, file explorer) for screen readers
 
 ### 21. Error handling improvements
 

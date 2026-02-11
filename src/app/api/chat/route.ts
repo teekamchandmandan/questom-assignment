@@ -2,21 +2,37 @@ import { streamText, tool, stepCountIs, convertToModelMessages } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { executeCode, writeFileToSandbox } from '@/lib/sandbox';
-import { SYSTEM_PROMPT, MODEL_NAME, MAX_STEPS } from '@/lib/constants';
+import {
+  getSystemPrompt,
+  MODEL_NAME,
+  MAX_STEPS,
+  type SupportedLanguage,
+} from '@/lib/constants';
+
+const VALID_LANGUAGES = new Set<SupportedLanguage>([
+  'javascript',
+  'python',
+  'typescript',
+]);
 
 export async function POST(req: Request) {
-  const { messages, chatId } = await req.json();
+  const { messages, chatId, language } = await req.json();
 
   const conversationId = typeof chatId === 'string' ? chatId : undefined;
+  const lang: SupportedLanguage =
+    typeof language === 'string' &&
+    VALID_LANGUAGES.has(language as SupportedLanguage)
+      ? (language as SupportedLanguage)
+      : 'javascript';
 
   // Build the tools with the conversation's chatId baked in so the
   // sandbox session is reused across tool calls in the same chat.
   const runCode = tool({
     description:
-      'Execute JavaScript or Python code inside a sandboxed environment and return stdout, stderr, and exit code. When filePath is provided, the code is written to that file and executed from there (e.g., `node app.js` or `python3 main.py`) — useful for multi-file projects. Without filePath, code runs inline.',
+      'Execute JavaScript, TypeScript, or Python code inside a sandboxed environment and return stdout, stderr, and exit code. When filePath is provided, the code is written to that file and executed from there (e.g., `node app.js`, `npx tsx app.ts`, or `python3 main.py`) — useful for multi-file projects. Without filePath, code runs inline.',
     inputSchema: z.object({
       language: z
-        .enum(['javascript', 'python'])
+        .enum(['javascript', 'python', 'typescript'])
         .describe('The programming language to execute'),
       code: z.string().describe('The code to execute'),
       filePath: z
@@ -53,7 +69,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: openai(MODEL_NAME),
-    system: SYSTEM_PROMPT,
+    system: getSystemPrompt(lang),
     messages: modelMessages,
     tools: { runCode, writeFile },
     stopWhen: stepCountIs(MAX_STEPS),

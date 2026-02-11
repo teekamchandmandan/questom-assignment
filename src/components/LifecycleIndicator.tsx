@@ -12,7 +12,7 @@ function LifecycleStep({ label, done, active }: LifecycleStepProps) {
           ? 'text-emerald-400 scale-100'
           : active
             ? 'text-yellow-400 animate-pulse scale-105'
-            : 'text-zinc-600 scale-100'
+            : 'text-zinc-500 scale-100'
       }`}
     >
       <span className='inline-block transition-transform duration-300'>
@@ -25,7 +25,7 @@ function LifecycleStep({ label, done, active }: LifecycleStepProps) {
 
 function ChevronRight() {
   return (
-    <span className='text-zinc-600 transition-colors duration-500'>→</span>
+    <span className='text-zinc-500 transition-colors duration-500'>→</span>
   );
 }
 

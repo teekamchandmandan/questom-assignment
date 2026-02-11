@@ -84,7 +84,7 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
               {filePath}
             </span>
           )}
-          <span className='text-xs text-zinc-500 font-mono'>{language}</span>
+          <span className='text-xs text-zinc-400 font-mono'>{language}</span>
         </div>
       </div>
 
@@ -113,7 +113,7 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
           {/* Streamed stdout (real-time) */}
           {streamedStdout && (
             <div className='px-3 sm:px-4 py-3 border-t border-zinc-800'>
-              <div className='text-[10px] uppercase tracking-wider text-zinc-500 mb-1'>
+              <div className='text-[10px] uppercase tracking-wider text-zinc-400 mb-1'>
                 stdout <span className='text-emerald-500 animate-pulse'>●</span>
               </div>
               <pre
@@ -151,7 +151,7 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
                 text={output.stdout}
                 className='absolute top-2 right-2 opacity-0 group-hover/stdout:opacity-100 transition-opacity'
               />
-              <div className='text-[10px] uppercase tracking-wider text-zinc-500 mb-1'>
+              <div className='text-[10px] uppercase tracking-wider text-zinc-400 mb-1'>
                 stdout
               </div>
               <pre className='text-xs font-mono text-zinc-200 overflow-x-auto whitespace-pre-wrap'>
@@ -169,7 +169,7 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
               </pre>
             </div>
           )}
-          <div className='px-3 sm:px-4 py-2 border-t border-zinc-800 text-[10px] text-zinc-500'>
+          <div className='px-3 sm:px-4 py-2 border-t border-zinc-800 text-[10px] text-zinc-400'>
             exit code: {output.exitCode}
           </div>
         </div>
