@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-Next.js 16 App Router chat application. An OpenAI agent (GPT-5 mini) generates and executes code inside Vercel Sandbox (Firecracker microVMs) via AI SDK v6 tool calling. Three API routes, one context provider, no database.
+Next.js 16 App Router chat application. An OpenAI agent (GPT-5 mini) generates and executes code inside Vercel Sandbox (Firecracker microVMs) via AI SDK v6 tool calling. Four API routes, one context provider, no database.
 
 **Data flow:** `page.tsx` → `ChatProvider` (wraps `useChat`) → `POST /api/chat` → `streamText` + tools (`runCode`, `writeFile`) → Vercel Sandbox → results stream back. Real-time stdout/stderr is piped through a separate SSE endpoint (`/api/sandbox/stream`).
 
@@ -11,14 +11,16 @@ Next.js 16 App Router chat application. An OpenAI agent (GPT-5 mini) generates a
 | File                                  | Responsibility                                                                                                                         |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/lib/chat-context.tsx`            | Single `ChatProvider` context with `{ state, actions, meta }` pattern; all chat state lives here                                       |
-| `src/lib/sandbox.ts`                  | Sandbox session manager (`Map` + TTL keyed by `conversationId:runtime`); `executeCode()`, `writeFileToSandbox()`, `listSandboxFiles()` |
+| `src/lib/sandbox.ts`                  | Sandbox session manager (`Map` + TTL keyed by `conversationId:runtime`); `executeCode()`, `writeFileToSandbox()`, `listSandboxFiles()`; serverless reconnection via `Sandbox.get({ sandboxId })` |
 | `src/lib/constants.ts`                | All tunables: `MODEL_NAME`, timeouts, max tokens, `getSystemPrompt()` factory                                                          |
-| `src/lib/types.ts`                    | Tool part interfaces + type guards (`RunCodeToolPart`, `WriteFileToolPart`, `isRunCodeToolPart()`)                                     |
+| `src/lib/types.ts`                    | Tool part interfaces + type guards (`RunCodeToolPart`, `WriteFileToolPart`, `isRunCodeToolPart()`); tool outputs include `sandboxId`    |
 | `src/lib/output-stream.ts`            | In-memory `EventEmitter` pub/sub for real-time stdout/stderr streaming                                                                 |
 | `src/lib/conversations.ts`            | localStorage CRUD for conversations (key: `sandbox-agent-conversations:v1`)                                                            |
+| `src/lib/file-tree.ts`                | `FileEntry` type, `buildTree()` to convert flat file list to nested `TreeNode` tree, file icon helpers                                 |
 | `src/app/api/chat/route.ts`           | `streamText` with `convertToModelMessages()`, rate limiter, input validation                                                           |
 | `src/app/api/sandbox/stream/route.ts` | SSE endpoint — subscribes to `outputManager` for real-time output                                                                      |
 | `src/app/api/sandbox/files/route.ts`  | GET endpoint — returns sandbox file tree for the `FileExplorer` panel                                                                  |
+| `src/app/api/sandbox/files/read/route.ts` | GET endpoint — reads individual file content from sandbox for preview                                                              |
 
 ## AI SDK v6 Conventions
 
@@ -84,6 +86,7 @@ Sandboxes are reused across tool calls within a conversation via `src/lib/sandbo
 - **Error recovery:** If a sandbox dies (timeout/OOM), the catch block in `executeCode()` deletes the session so the next call creates a fresh one
 - **Streaming:** When `conversationId` is provided, `runInSandbox()` runs commands in detached mode with `cmd.logs()` for real-time output, pushing chunks to `outputManager`
 - **One-off fallback:** Requests without `conversationId` create a disposable sandbox (backward compat)
+- **Serverless reconnection:** Tool results include `sandboxId` in their output. The `/api/sandbox/files` and `/api/sandbox/files/read` routes accept `?sandboxId=...` and use `Sandbox.get({ sandboxId })` to reconnect to the running sandbox when the in-memory session map isn't available (separate function instances in serverless). The client tracks `sandboxId` from the latest tool result in `ChatProvider`'s `meta`.
 
 ## Output Streaming Architecture
 

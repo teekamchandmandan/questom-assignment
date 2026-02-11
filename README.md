@@ -11,7 +11,7 @@ An AI-powered code execution chatbot built with Next.js, the Vercel AI SDK, and 
 - **Real-time output streaming** — stdout/stderr stream to the UI in real-time via a dedicated SSE endpoint during long-running executions
 - **Markdown & syntax highlighting** — AI responses render as rich Markdown; code blocks use Shiki (VS Code-quality) highlighting for 17+ languages
 - **Conversation persistence** — Conversations auto-save to localStorage with a sidebar for browsing, switching, and deleting past chats
-- **File explorer** — Right-side panel showing the sandbox's file tree, auto-refreshing after each tool call
+- **File explorer** — Right-side panel showing the sandbox's file tree with click-to-preview file contents, auto-refreshing after each tool call; works in serverless via `Sandbox.get()` reconnection
 - **Language selector** — Switch between JavaScript, TypeScript, and Python per conversation
 - **Mobile responsive** — Fully usable on mobile (375px+) with `dvh` viewport, responsive typography, and collapsible panels
 - **Security hardened** — IP-based rate limiting (20 req/min), input length validation (10k chars), stdout truncation (50k chars), capped model output (4096 tokens)
@@ -40,7 +40,8 @@ User → Chat UI (Next.js App Router)
 | --------------------------------- | --------------------------------------------------------------------- |
 | `streamText` over `ToolLoopAgent` | Simpler, well-documented, sufficient for scoped tool-calling loops    |
 | Sandbox session reuse (Map + TTL) | Enables stateful multi-step coding; 5-min idle cleanup prevents leaks |
-| Shiki over Prism                  | VS Code-quality highlighting with broader language support            |
+| `Sandbox.get()` reconnection       | File explorer works in serverless where in-memory sessions aren't shared |
+| Shiki over Prism                   | VS Code-quality highlighting with broader language support            |
 | localStorage over database        | Keeps demo self-contained with zero infrastructure dependencies       |
 | SSE for output streaming          | Decoupled from chat stream; graceful fallback when unavailable        |
 
@@ -49,34 +50,40 @@ User → Chat UI (Next.js App Router)
 ```
 src/
 ├── app/
-│   ├── page.tsx                    # Main chat UI (useChat, state, layout)
+│   ├── page.tsx                    # Main chat page (layout shell)
 │   ├── layout.tsx                  # Root layout (Geist font, metadata)
-│   ├── globals.css                 # Tailwind + dark theme + animations
+│   ├── globals.css                 # Tailwind v4 + dark theme + animations
 │   └── api/
 │       ├── chat/route.ts           # POST — AI agent with runCode & writeFile tools
 │       └── sandbox/
 │           ├── stream/route.ts     # GET SSE — real-time stdout/stderr streaming
-│           └── files/route.ts      # GET — sandbox file tree listing
+│           └── files/
+│               ├── route.ts        # GET — sandbox file tree listing
+│               └── read/route.ts   # GET — read individual file content
 ├── components/
-│   ├── ChatMessage.tsx             # Message bubble (user/AI) with avatar
-│   ├── ToolCard.tsx                # Sandbox execution card with lifecycle display
-│   ├── WriteFileCard.tsx           # File creation card with syntax preview
+│   ├── ChatHeader.tsx              # Header bar with title, toggles, new chat
 │   ├── ChatInput.tsx               # Input bar + language selector + send/stop
-│   ├── EmptyState.tsx              # Welcome screen with clickable example prompts
-│   ├── ConversationSidebar.tsx     # Left sidebar for conversation history
-│   ├── FileExplorer.tsx            # Right sidebar for sandbox file tree
-│   ├── MarkdownRenderer.tsx        # react-markdown with styled components
+│   ├── ChatMessage.tsx             # Message bubble (user/AI) with avatar
 │   ├── CodeBlock.tsx               # Shiki syntax-highlighted code block
+│   ├── ConversationSidebar.tsx     # Left sidebar for conversation history
 │   ├── CopyButton.tsx              # Clipboard copy with success feedback
+│   ├── EmptyState.tsx              # Welcome screen with clickable example prompts
+│   ├── FileExplorer.tsx            # Right sidebar for sandbox file tree + preview
+│   ├── Icons.tsx                   # SVG icon components (icon factory pattern)
 │   ├── LifecycleIndicator.tsx      # Sandbox → Running → Result status dots
+│   ├── MarkdownRenderer.tsx        # react-markdown with styled components
 │   ├── NetworkBanner.tsx           # Offline detection banner
-│   └── Toast.tsx                   # Toast notification system
+│   ├── Toast.tsx                   # Toast notification system
+│   ├── ToolCard.tsx                # Sandbox execution card with lifecycle display
+│   └── WriteFileCard.tsx           # File creation card with syntax preview
 └── lib/
+    ├── chat-context.tsx            # ChatProvider context (state, actions, meta)
     ├── constants.ts                # Model config, limits, system prompts
-    ├── sandbox.ts                  # SandboxSessionManager, executeCode, writeFile
-    ├── output-stream.ts            # OutputStreamManager (EventEmitter + SSE bridge)
     ├── conversations.ts            # localStorage persistence helpers
+    ├── file-tree.ts                # File tree builder, icons, utilities
     ├── highlighter.ts              # Shiki singleton with language preloading
+    ├── output-stream.ts            # OutputStreamManager (EventEmitter + SSE bridge)
+    ├── sandbox.ts                  # SandboxSessionManager, executeCode, writeFile
     └── types.ts                    # Shared TypeScript types & type guards
 ```
 
