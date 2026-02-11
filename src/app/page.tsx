@@ -15,6 +15,8 @@ import { ChatInput } from '@/components/ChatInput';
 import { EmptyState } from '@/components/EmptyState';
 import { ConversationSidebar } from '@/components/ConversationSidebar';
 import { FileExplorer } from '@/components/FileExplorer';
+import { NetworkBanner } from '@/components/NetworkBanner';
+import { ToastContainer, useToasts } from '@/components/Toast';
 import {
   loadConversations,
   saveConversation,
@@ -39,6 +41,7 @@ export default function Chat() {
   const chatIdRef = useRef(generateId());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const languageRef = useRef(language);
+  const { toasts, addToast, dismissToast } = useToasts();
 
   // Keep the ref in sync so the transport closure sees the latest value
   useEffect(() => {
@@ -58,8 +61,11 @@ export default function Chat() {
     [],
   );
 
-  const { messages, setMessages, sendMessage, status, error, stop } = useChat({
+  const { messages, setMessages, sendMessage, status, error, stop, regenerate } = useChat({
     transport,
+    onError: (err) => {
+      addToast(err.message || 'Something went wrong. Please try again.', 'error');
+    },
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
@@ -169,6 +175,9 @@ export default function Chat() {
 
       {/* Main chat area */}
       <div className='flex flex-col flex-1 min-w-0'>
+        {/* Network disconnection banner */}
+        <NetworkBanner />
+
         {/* Header */}
         <header className='flex-shrink-0 border-b border-zinc-800/60 bg-gradient-to-r from-zinc-900 via-zinc-900/95 to-emerald-950/30 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3'>
           <div className='flex items-center gap-2 min-w-0'>
@@ -300,10 +309,30 @@ export default function Chat() {
 
             {error && (
               <div
-                className='bg-red-950/50 border border-red-800 rounded-lg p-4 text-red-300 text-sm'
+                className='bg-red-950/50 border border-red-800 rounded-lg p-4 text-red-300 text-sm flex items-center justify-between gap-3'
                 role='alert'
               >
-                Error: {error.message}
+                <span>Error: {error.message}</span>
+                <button
+                  onClick={() => regenerate()}
+                  className='flex-shrink-0 px-3 py-1.5 text-xs font-medium rounded-md bg-red-900/60 hover:bg-red-800/60 text-red-200 border border-red-700/50 transition-colors flex items-center gap-1.5'
+                >
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    width='12'
+                    height='12'
+                    viewBox='0 0 24 24'
+                    fill='none'
+                    stroke='currentColor'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                  >
+                    <path d='M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8' />
+                    <path d='M3 3v5h5' />
+                  </svg>
+                  Retry
+                </button>
               </div>
             )}
 
@@ -322,6 +351,9 @@ export default function Chat() {
           onLanguageChange={setLanguage}
         />
       </div>
+
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       {/* File Explorer */}
       <FileExplorer

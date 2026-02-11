@@ -223,11 +223,11 @@ Transform the working prototype into a polished, architecturally sound demo that
 - Keyboard shortcut hint: added `↵` (return symbol) next to "Send" button label, hidden on mobile (`hidden sm:inline-flex`)
 - Added `aria-label` to icon-only toggle buttons (sidebar, file explorer) for screen readers
 
-### 21. Error handling improvements
+### 21. Error handling improvements ✅
 
-- Retry button on failed messages
-- Network disconnection detection with a banner
-- Toast/notification for transient errors
+- **Retry button on failed messages:** Added `regenerate()` from `useChat` hook. Error display now shows a styled "Retry" button with a refresh icon that re-attempts the last request.
+- **Network disconnection detection:** Created `NetworkBanner` component using `navigator.onLine` + `online`/`offline` event listeners. Shows an amber warning banner below the header when offline, auto-hides when connectivity returns.
+- **Toast notifications for transient errors:** Created `Toast` component system (`ToastContainer` + `useToasts` hook). Toasts appear in top-right corner with slide-in animation, auto-dismiss after 5s, support error/success/info types. Connected to `useChat`'s `onError` callback so any API error triggers a toast notification in addition to the inline error display.
 
 ### 22. Security hardening
 

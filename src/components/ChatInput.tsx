@@ -94,7 +94,9 @@ export function ChatInput({
             className='px-3 sm:px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5'
           >
             Send
-            <kbd className='hidden sm:inline-flex items-center text-[10px] font-sans text-emerald-300/60 ml-0.5'>↵</kbd>
+            <kbd className='hidden sm:inline-flex items-center text-[10px] font-sans text-emerald-300/60 ml-0.5'>
+              ↵
+            </kbd>
           </button>
         )}
       </form>
