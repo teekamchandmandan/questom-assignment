@@ -137,24 +137,47 @@ Transform the working prototype into a polished, architecturally sound demo that
 - **ChatInput**: responsive padding (`px-3 sm:px-4`), `min-w-0` on input to prevent flex overflow, smaller button padding on mobile (`px-3 sm:px-5`)
 - **EmptyState**: reduced top margin on mobile (`mt-16 sm:mt-32`), added horizontal padding (`px-2`) so prompt chips don't hit screen edges
 
-### 14. Sandbox session reuse (wow factor)
+### 14. Sandbox session reuse (wow factor) ✅
 
 - Instead of creating a fresh `Sandbox` per tool call, maintain a sandbox per conversation session
 - Enables **stateful multi-step coding**: user says "create a file" → "run it" → "modify it" — all in the same sandbox filesystem
-- Store sandbox references in a `Map<conversationId, Sandbox>` with a TTL-based cleanup
-- Pass `conversationId` from the client via request headers or body
+- Store sandbox references in a `Map<conversationId:runtime, Sandbox>` with TTL-based cleanup (5 min idle)
+- Pass `conversationId` from the client via `DefaultChatTransport` `body` option (resolved per-request via ref)
+- **Implementation details:**
+  - `lib/sandbox.ts` — `SandboxSessionManager` with `getOrCreateSandbox(conversationId, runtime)`, periodic cleanup interval, dead-sandbox recovery (auto-recreates if sandbox died from timeout/OOM)
+  - `route.ts` — extracts `chatId` from request body, passes to `executeCode()` so all tool calls in a conversation share the same sandbox
+  - `page.tsx` — generates `chatId` via `crypto.randomUUID()`, stored in a ref, passed via `DefaultChatTransport({ body })`, reset on "New Chat"
+  - `constants.ts` — `SANDBOX_TIMEOUT` bumped to 5 min (sandbox lifetime), added `SANDBOX_SESSION_TTL` (5 min idle cleanup)
+  - System prompt updated to tell the AI that sandbox filesystem persists across calls
+  - Backward compatible: requests without `chatId` fall back to one-off sandbox behavior
 
-### 15. Multi-file / filesystem support
+### 15. Multi-file / filesystem support ✅
 
-- Extend the `runCode` tool to support writing files to the sandbox (not just `node -e` inline)
-- Add a `writeFile` tool or evolve `runCode` to accept an optional file path
-- Lets the AI create project structures, write + run multi-file programs
+- Added `writeFile` tool — writes arbitrary files (config, data, HTML, JSON, etc.) to the sandbox filesystem
+- Evolved `runCode` tool with optional `filePath` parameter — when set, writes code to that path and executes from file (e.g., `node /vercel/sandbox/app.js`) instead of inline `node -e`
+- **Implementation details:**
+  - `lib/sandbox.ts` — added `writeFileToSandbox(filePath, content, conversationId?)` function; updated `runInSandbox` to handle file-based execution with `mkdir -p` for parent dirs + heredoc write
+  - `route.ts` — registered `writeFile` tool with `filePath`, `content`, `description` inputs; updated `runCode` inputSchema with optional `filePath`
+  - `lib/types.ts` — added `WriteFileInput`, `WriteFileOutput`, `WriteFileToolPart` types + `isWriteFileToolPart()` type guard; added `filePath` to `RunCodeInput`
+  - `components/WriteFileCard.tsx` — new component with file icon, filename display, syntax-highlighted content preview (auto-detected from extension), success/failure status, copy button
+  - `components/ChatMessage.tsx` — now renders `WriteFileCard` for `tool-writeFile` parts
+  - `components/ToolCard.tsx` — shows file path (blue, mono) in header when `runCode` uses `filePath`
+  - `lib/constants.ts` — system prompt updated with multi-file workflow instructions (writeFile for supporting files, runCode+filePath for entry points, `/vercel/sandbox/` root)
+- Enables multi-file project workflows: e.g., writeFile to create `utils.js` + `config.json`, then runCode with filePath to execute `index.js` that imports them
 
-### 16. Real-time output streaming
+### 16. Real-time output streaming ✅
 
-- If the Vercel Sandbox API supports streaming stdout/stderr, pipe it to the client in real-time
-- Investigate `sandbox.process.spawn()` or similar APIs with streaming listeners
-- Significant UX improvement for long-running scripts
+- Vercel Sandbox SDK supports `runCommand({ detached: true })` + `cmd.logs()` async generator for streaming stdout/stderr
+- **Architecture:** Separate SSE endpoint + in-memory event emitter bridge between tool execution and client
+- **Implementation details:**
+  - `lib/output-stream.ts` — `OutputStreamManager` singleton using Node.js `EventEmitter`, keyed by `chatId`. Supports `start(id)`, `push(id, chunk)`, `subscribe(id, onChunk, onDone)`, `end(id)`. Late subscribers receive buffered chunks immediately. Auto-cleanup after 10s.
+  - `lib/sandbox.ts` — `runInSandbox` now accepts optional `streamId`; when present, uses `detached: true` mode, iterates `cmd.logs()` yielding `{ data, stream }` chunks, pushes each to `outputManager`, then calls `cmd.wait()` for exit code. Session-based executions always stream; one-off executions use the original non-streaming path.
+  - `app/api/sandbox/stream/route.ts` — SSE `GET` endpoint accepting `?chatId=<id>`. Creates a `ReadableStream`, subscribes to `outputManager`, sends each chunk as `data: JSON\n\n` SSE events, sends `{ type: 'done' }` on completion. Handles client disconnect via `req.signal` abort.
+  - `components/ToolCard.tsx` — now a client component (`'use client'`); accepts `chatId` prop. When `isExecuting`, opens an `EventSource` to `/api/sandbox/stream?chatId=...`, accumulates stdout/stderr in state, displays them in real-time with pulsing `●` live indicator. Auto-scrolls streamed output. On `output-available`, closes EventSource and shows final output with copy buttons. Max-height 60 with overflow scroll on streaming output.
+  - `components/ChatMessage.tsx` — accepts and forwards `chatId` to `ToolCard`
+  - `app/page.tsx` — passes `chatIdRef.current` to `ChatMessage`
+- **Graceful fallback:** In serverless environments where the SSE route runs in a separate instance (no shared memory), EventSource silently fails — the ToolCard shows the spinner and output appears all at once when execution completes (original behavior). No degraded experience.
+- **UX impact:** For long-running scripts, users see stdout/stderr lines appear in real-time during execution instead of waiting for the full result
 
 ### 17. Conversation persistence (localStorage)
 

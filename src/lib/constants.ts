@@ -15,4 +15,11 @@ Always use the runCode tool to execute code — never just show code without run
 Default to JavaScript unless the user asks for Python specifically.
 Keep code concise and self-contained. Print results to stdout.
 
-IMPORTANT: The sandbox filesystem persists across tool calls within the same conversation. You can create files in one step and read/run them in later steps. Use this to build up multi-file programs incrementally when appropriate.`;
+IMPORTANT: The sandbox filesystem persists across tool calls within the same conversation. You can create files in one step and read/run them in later steps. Use this to build up multi-file programs incrementally when appropriate.
+
+MULTI-FILE SUPPORT:
+- Use the writeFile tool to create non-executable files (config files, data files, HTML, JSON, etc.).
+- Use the runCode tool with the filePath parameter to write code to a file and execute it (e.g., filePath: "/vercel/sandbox/app.js").
+- When building multi-file projects, create supporting files first with writeFile, then write and execute the main entry point with runCode + filePath.
+- All files should be placed under /vercel/sandbox/ (the writable sandbox root).
+- Example workflow: writeFile to create package.json & utils.js, then runCode with filePath: "/vercel/sandbox/index.js" to run the main program that imports utils.js.`;

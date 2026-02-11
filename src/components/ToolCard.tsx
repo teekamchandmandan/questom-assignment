@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
 import { LifecycleIndicator } from './LifecycleIndicator';
 import { CopyButton } from './CopyButton';
 import { CodeBlock } from './CodeBlock';
@@ -5,26 +8,84 @@ import type { RunCodeToolPart } from '@/lib/types';
 
 interface ToolCardProps {
   part: RunCodeToolPart;
+  chatId?: string;
 }
 
-export function ToolCard({ part }: ToolCardProps) {
+export function ToolCard({ part, chatId }: ToolCardProps) {
   const { state, input, output, errorText } = part;
   const language = input?.language ?? 'javascript';
   const code = input?.code ?? '';
+  const filePath = input?.filePath;
 
   const isExecuting =
     state === 'input-available' || state === 'approval-requested';
   const isDone = state === 'output-available';
   const isError = state === 'output-error';
 
+  // ── Real-time output streaming ──
+  const [streamedStdout, setStreamedStdout] = useState('');
+  const [streamedStderr, setStreamedStderr] = useState('');
+  const streamEndRef = useRef<HTMLPreElement>(null);
+
+  useEffect(() => {
+    if (!isExecuting || !chatId) return;
+
+    setStreamedStdout('');
+    setStreamedStderr('');
+
+    const eventSource = new EventSource(
+      `/api/sandbox/stream?chatId=${encodeURIComponent(chatId)}`,
+    );
+
+    eventSource.onmessage = (event) => {
+      try {
+        const chunk = JSON.parse(event.data);
+        if (chunk.type === 'done') {
+          eventSource.close();
+          return;
+        }
+        if (chunk.type === 'stdout') {
+          setStreamedStdout((prev) => prev + chunk.data);
+        } else if (chunk.type === 'stderr') {
+          setStreamedStderr((prev) => prev + chunk.data);
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [isExecuting, chatId]);
+
+  // Auto-scroll streamed output
+  useEffect(() => {
+    streamEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [streamedStdout, streamedStderr]);
+
+  const hasStreamedOutput = streamedStdout || streamedStderr;
+
   return (
     <div className='border border-zinc-700/80 rounded-lg overflow-hidden my-2 animate-card-in shadow-lg shadow-black/20'>
       {/* Sandbox lifecycle header */}
       <div className='bg-zinc-800/60 px-3 sm:px-4 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-3'>
         <LifecycleIndicator state={state} />
-        <span className='ml-auto text-xs text-zinc-500 font-mono'>
-          {language}
-        </span>
+        <div className='ml-auto flex items-center gap-2'>
+          {filePath && (
+            <span
+              className='text-[10px] text-blue-400 font-mono truncate max-w-[200px]'
+              title={filePath}
+            >
+              {filePath}
+            </span>
+          )}
+          <span className='text-xs text-zinc-500 font-mono'>{language}</span>
+        </div>
       </div>
 
       {/* Code block */}
@@ -38,18 +99,50 @@ export function ToolCard({ part }: ToolCardProps) {
         </div>
       )}
 
-      {/* Executing indicator */}
+      {/* Executing indicator + streamed output */}
       {isExecuting && (
-        <div className='px-3 sm:px-4 py-3 border-t border-zinc-800 text-xs text-zinc-400 flex items-center gap-2'>
-          <span
-            className='inline-block w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin'
-            role='status'
-          />
-          Executing in sandbox…
+        <div className='border-t border-zinc-800'>
+          <div className='px-3 sm:px-4 py-3 text-xs text-zinc-400 flex items-center gap-2'>
+            <span
+              className='inline-block w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin'
+              role='status'
+            />
+            Executing in sandbox…
+          </div>
+
+          {/* Streamed stdout (real-time) */}
+          {streamedStdout && (
+            <div className='px-3 sm:px-4 py-3 border-t border-zinc-800'>
+              <div className='text-[10px] uppercase tracking-wider text-zinc-500 mb-1'>
+                stdout <span className='text-emerald-500 animate-pulse'>●</span>
+              </div>
+              <pre
+                ref={!streamedStderr ? streamEndRef : undefined}
+                className='text-xs font-mono text-zinc-200 overflow-x-auto whitespace-pre-wrap max-h-60 overflow-y-auto'
+              >
+                {streamedStdout}
+              </pre>
+            </div>
+          )}
+
+          {/* Streamed stderr (real-time) */}
+          {streamedStderr && (
+            <div className='px-3 sm:px-4 py-3 border-t border-zinc-800'>
+              <div className='text-[10px] uppercase tracking-wider text-red-400 mb-1'>
+                stderr <span className='text-red-500 animate-pulse'>●</span>
+              </div>
+              <pre
+                ref={streamEndRef}
+                className='text-xs font-mono text-red-300 overflow-x-auto whitespace-pre-wrap max-h-60 overflow-y-auto'
+              >
+                {streamedStderr}
+              </pre>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Output */}
+      {/* Final output (after execution completes) */}
       {isDone && output && (
         <div className='border-t border-zinc-800'>
           {output.stdout && (

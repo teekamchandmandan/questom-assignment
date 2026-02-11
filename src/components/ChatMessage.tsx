@@ -1,13 +1,15 @@
 import type { UIMessage } from 'ai';
 import { ToolCard } from './ToolCard';
+import { WriteFileCard } from './WriteFileCard';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { isRunCodeToolPart } from '@/lib/types';
+import { isRunCodeToolPart, isWriteFileToolPart } from '@/lib/types';
 
 interface ChatMessageProps {
   message: UIMessage;
+  chatId?: string;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, chatId }: ChatMessageProps) {
   const isUser = message.role === 'user';
 
   // Skip empty assistant messages (can appear around tool calls)
@@ -56,7 +58,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
           }
 
           if (isRunCodeToolPart(part)) {
-            return <ToolCard key={i} part={part} />;
+            return <ToolCard key={i} part={part} chatId={chatId} />;
+          }
+
+          if (isWriteFileToolPart(part)) {
+            return <WriteFileCard key={i} part={part} />;
           }
 
           return null;
