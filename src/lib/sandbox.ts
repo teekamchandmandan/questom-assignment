@@ -11,6 +11,7 @@ export interface CodeExecutionResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+  sandboxId?: string;
 }
 
 // ── Sandbox Session Manager ──────────────────────────────────────────
@@ -227,6 +228,7 @@ export interface WriteFileResult {
   success: boolean;
   filePath: string;
   error?: string;
+  sandboxId?: string;
 }
 
 export async function writeFileToSandbox(
@@ -253,12 +255,14 @@ export async function writeFileToSandbox(
       return { success: false, filePath, error: 'File was not created' };
     }
 
+    const sbId = sandbox.sandboxId;
+
     // If no conversationId, stop the one-off sandbox
     if (!conversationId) {
       await sandbox.stop().catch(() => {});
     }
 
-    return { success: true, filePath };
+    return { success: true, filePath, sandboxId: sbId };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Unknown error writing file';
@@ -281,13 +285,14 @@ export async function executeCode(
 
   try {
     const sandbox = await getOrCreateSandbox(conversationId, runtime);
-    return await runInSandbox(
+    const result = await runInSandbox(
       sandbox,
       language,
       code,
       filePath,
       conversationId,
     );
+    return { ...result, sandboxId: sandbox.sandboxId };
   } catch (error) {
     // If the sandbox died (timeout, OOM, etc.) remove it so a fresh
     // one is created on the next call.
@@ -310,32 +315,55 @@ export type { FileEntry } from './file-tree';
  * Lists all user-created files in the sandbox for a given conversation.
  * Returns a flat list of { path, type, size } entries rooted at /vercel/sandbox/.
  */
-export async function listSandboxFiles(
+// ── Reconnect helper ─────────────────────────────────────────────────
+// In serverless environments, the in-memory session map is not shared
+// across function instances. Use Sandbox.get() to reconnect via the
+// sandbox ID that the client received in tool results.
+
+async function reconnectSandbox(
+  sandboxId: string,
+): Promise<SandboxInstance | null> {
+  try {
+    return (await Sandbox.get({ sandboxId })) as SandboxInstance;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get a sandbox instance — first checks in-memory sessions (works locally),
+ * then falls back to Sandbox.get() reconnection (works in serverless).
+ */
+async function getSandboxForFiles(
   conversationId: string,
-): Promise<FileEntry[]> {
+  sandboxId?: string,
+): Promise<SandboxInstance | null> {
   const sessions = getSessions();
   const runtimes: Runtime[] = ['node24', 'python3.13'];
-  const allFiles: FileEntry[] = [];
-  const seenPaths = new Set<string>();
 
+  // Try in-memory sessions first (works in local dev / single-instance)
   for (const runtime of runtimes) {
     const key = sessionKey(conversationId, runtime);
     const session = sessions.get(key);
-    if (!session) continue;
-
-    const files = await listFilesInSandbox(session.sandbox);
-    for (const file of files) {
-      if (!seenPaths.has(file.path)) {
-        seenPaths.add(file.path);
-        allFiles.push(file);
-      }
-    }
+    if (session) return session.sandbox;
   }
 
-  return allFiles.sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-    return a.path.localeCompare(b.path);
-  });
+  // Fall back to Sandbox.get() reconnection (works in serverless)
+  if (sandboxId) {
+    return reconnectSandbox(sandboxId);
+  }
+
+  return null;
+}
+
+export async function listSandboxFiles(
+  conversationId: string,
+  sandboxId?: string,
+): Promise<FileEntry[]> {
+  const sandbox = await getSandboxForFiles(conversationId, sandboxId);
+  if (!sandbox) return [];
+
+  return listFilesInSandbox(sandbox);
 }
 
 async function listFilesInSandbox(
@@ -393,43 +421,36 @@ const MAX_FILE_READ_SIZE = 100_000; // 100 KB max for preview
 export async function readFileFromSandbox(
   conversationId: string,
   filePath: string,
+  sandboxId?: string,
 ): Promise<{ content: string; size: number } | null> {
-  const sessions = getSessions();
-  const runtimes: Runtime[] = ['node24', 'python3.13'];
+  const sandbox = await getSandboxForFiles(conversationId, sandboxId);
+  if (!sandbox) return null;
 
-  for (const runtime of runtimes) {
-    const key = sessionKey(conversationId, runtime);
-    const session = sessions.get(key);
-    if (!session) continue;
+  try {
+    // Check if file exists and get size
+    const stat = await sandbox.runCommand('sh', [
+      '-c',
+      `stat -c '%s' ${JSON.stringify(filePath)} 2>/dev/null || stat -f '%z' ${JSON.stringify(filePath)} 2>/dev/null`,
+    ]);
+    const sizeStr = (await stat.stdout()).trim();
+    if (!sizeStr || stat.exitCode !== 0) return null;
 
-    try {
-      // Check if file exists and get size
-      const stat = await session.sandbox.runCommand('sh', [
-        '-c',
-        `stat -c '%s' ${JSON.stringify(filePath)} 2>/dev/null || stat -f '%z' ${JSON.stringify(filePath)} 2>/dev/null`,
-      ]);
-      const sizeStr = (await stat.stdout()).trim();
-      if (!sizeStr || stat.exitCode !== 0) continue;
-
-      const size = parseInt(sizeStr, 10);
-      if (size > MAX_FILE_READ_SIZE) {
-        return {
-          content: `[File too large to preview: ${formatSize(size)}]`,
-          size,
-        };
-      }
-
-      const result = await session.sandbox.runCommand('cat', [filePath]);
-      if (result.exitCode !== 0) continue;
-
-      const content = await result.stdout();
-      return { content, size };
-    } catch {
-      continue;
+    const size = parseInt(sizeStr, 10);
+    if (size > MAX_FILE_READ_SIZE) {
+      return {
+        content: `[File too large to preview: ${formatSize(size)}]`,
+        size,
+      };
     }
-  }
 
-  return null;
+    const result = await sandbox.runCommand('cat', [filePath]);
+    if (result.exitCode !== 0) return null;
+
+    const content = await result.stdout();
+    return { content, size };
+  } catch {
+    return null;
+  }
 }
 
 /** One-off sandbox for requests without a conversation ID (backward compat) */

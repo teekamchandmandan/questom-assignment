@@ -14,6 +14,7 @@ export interface RunCodeOutput {
   stdout?: string;
   stderr?: string;
   exitCode?: number;
+  sandboxId?: string;
 }
 
 export interface RunCodeToolPart {
@@ -49,6 +50,7 @@ export interface WriteFileOutput {
   success?: boolean;
   filePath?: string;
   error?: string;
+  sandboxId?: string;
 }
 
 export interface WriteFileToolPart {

@@ -64,6 +64,7 @@ export interface ChatActions {
 
 export interface ChatMeta {
   chatId: string;
+  sandboxId: string | null;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
   handleScroll: () => void;
@@ -98,6 +99,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [fileExplorerOpen, setFileExplorerOpen] = useState(false);
   const [fileRefreshKey, setFileRefreshKey] = useState(0);
+  const [sandboxId, setSandboxId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [chatId, setChatId] = useState(() => '');
 
@@ -193,6 +195,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       );
       if (hasToolParts) {
         setFileRefreshKey((k) => k + 1);
+        // Extract sandboxId from the latest tool result output
+        for (let i = lastMsg.parts.length - 1; i >= 0; i--) {
+          const p = lastMsg.parts[i] as {
+            type: string;
+            state?: string;
+            output?: { sandboxId?: string };
+          };
+          if (
+            p.type.startsWith('tool-') &&
+            p.state === 'output-available' &&
+            p.output?.sandboxId
+          ) {
+            setSandboxId(p.output.sandboxId);
+            break;
+          }
+        }
       }
     }
     prevStatusRef.current = status;
@@ -236,6 +254,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setSidebarOpen(false);
     setFileExplorerOpen(false);
     setFileRefreshKey(0);
+    setSandboxId(null);
   }, [setMessages]);
 
   const handleSelectConversation = useCallback(
@@ -295,6 +314,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         },
         meta: {
           chatId,
+          sandboxId,
           messagesEndRef,
           scrollContainerRef,
           handleScroll,

@@ -100,7 +100,7 @@ export function FileExplorer() {
   const { state, actions, meta } = useChatContext();
   const { fileExplorerOpen: isOpen } = state;
   const { closeFileExplorer: onClose } = actions;
-  const { chatId, fileRefreshKey: refreshKey } = meta;
+  const { chatId, fileRefreshKey: refreshKey, sandboxId } = meta;
 
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,9 +111,9 @@ export function FileExplorer() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/sandbox/files?chatId=${encodeURIComponent(chatId)}`,
-      );
+      const params = new URLSearchParams({ chatId });
+      if (sandboxId) params.set('sandboxId', sandboxId);
+      const res = await fetch(`/api/sandbox/files?${params}`);
       if (!res.ok) throw new Error('Failed to fetch files');
       const data = await res.json();
       setFiles(data.files ?? []);
@@ -122,7 +122,7 @@ export function FileExplorer() {
     } finally {
       setLoading(false);
     }
-  }, [chatId]);
+  }, [chatId, sandboxId]);
 
   // Fetch whenever panel opens or refreshKey changes
   useEffect(() => {
@@ -161,9 +161,9 @@ export function FileExplorer() {
       setPreviewLoading(true);
 
       try {
-        const res = await fetch(
-          `/api/sandbox/files/read?chatId=${encodeURIComponent(chatId)}&path=${encodeURIComponent(node.path)}`,
-        );
+        const params = new URLSearchParams({ chatId, path: node.path });
+        if (sandboxId) params.set('sandboxId', sandboxId);
+        const res = await fetch(`/api/sandbox/files/read?${params}`);
         if (!res.ok) {
           throw new Error(
             res.status === 404
@@ -181,7 +181,7 @@ export function FileExplorer() {
         setPreviewLoading(false);
       }
     },
-    [chatId],
+    [chatId, sandboxId],
   );
 
   const closePreview = useCallback(() => {
