@@ -34,7 +34,6 @@ export function useConversationPersistence({
 
   useEffect(() => {
     if (messages.length === 0) return;
-    // Mark that we have data to persist
     pendingPersistRef.current = true;
   }, [messages]);
 

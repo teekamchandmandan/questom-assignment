@@ -21,8 +21,6 @@ interface ChatMessageProps {
   chatId?: string;
 }
 
-// ── Explicit variant: User message ──────────────────────────────────
-
 function UserMessage({ message }: { message: UIMessage }) {
   return (
     <div className='flex gap-2 sm:gap-3 animate-message-in justify-end'>
@@ -50,8 +48,6 @@ function UserMessage({ message }: { message: UIMessage }) {
     </div>
   );
 }
-
-// ── Explicit variant: Assistant message ─────────────────────────────
 
 function AssistantMessage({
   message,
@@ -101,8 +97,6 @@ function AssistantMessage({
     </div>
   );
 }
-
-// ── ChatMessage — selects the correct variant ───────────────────────
 
 export function ChatMessage({ message, chatId }: ChatMessageProps) {
   return message.role === 'user' ? (

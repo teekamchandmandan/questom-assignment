@@ -21,18 +21,15 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
   const isDone = state === 'output-available';
   const isError = state === 'output-error';
 
-  // ── Execution timing ──
   const execStartRef = useRef<number | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
 
-  // Capture start time when execution begins
   useEffect(() => {
     if (isExecuting && execStartRef.current === null) {
       execStartRef.current = Date.now();
     }
   }, [isExecuting]);
 
-  // Capture elapsed once execution completes
   useEffect(() => {
     if ((isDone || isError) && execStartRef.current !== null) {
       setElapsed(Date.now() - execStartRef.current);
@@ -40,7 +37,6 @@ export function ToolCard({ part, chatId }: ToolCardProps) {
     }
   }, [isDone, isError]);
 
-  // ── Real-time output streaming ──
   const [streamedStdout, setStreamedStdout] = useState('');
   const [streamedStderr, setStreamedStderr] = useState('');
   const streamEndRef = useRef<HTMLPreElement>(null);

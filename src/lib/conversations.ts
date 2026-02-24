@@ -2,7 +2,7 @@ import type { UIMessage } from 'ai';
 
 const STORAGE_KEY = 'sandbox-agent-conversations:v1';
 
-// ── In-memory cache to avoid repeated localStorage reads/parses ────
+// In-memory cache — avoids redundant localStorage reads during a session.
 let cachedConversations: Conversation[] | null = null;
 
 export type Language = 'javascript' | 'python' | 'typescript';

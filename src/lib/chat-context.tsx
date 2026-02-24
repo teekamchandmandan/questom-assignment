@@ -37,8 +37,6 @@ function generateId() {
   return crypto.randomUUID();
 }
 
-// ── Context ─────────────────────────────────────────────────────────
-
 export const ChatContext = createContext<ChatContextValue | null>(null);
 
 /** Consume the chat context – throws if used outside ChatProvider. */
@@ -47,8 +45,6 @@ export function useChatContext(): ChatContextValue {
   if (!ctx) throw new Error('useChatContext must be used within ChatProvider');
   return ctx;
 }
-
-// ── Provider ────────────────────────────────────────────────────────
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [input, setInput] = useState('');
@@ -100,12 +96,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  // ── Load conversations from localStorage on mount ──────────────
   useEffect(() => {
     setConversations(loadConversations());
   }, []);
 
-  // ── Extracted hooks ───────────────────────────────────────────
   useConversationPersistence({
     messages,
     messagesRef,
@@ -124,8 +118,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     shouldAutoScrollRef,
     handleScroll,
   } = useAutoScroll(messages);
-
-  // ── Actions ───────────────────────────────────────────────────
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {

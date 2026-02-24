@@ -83,7 +83,6 @@ export async function POST(req: Request) {
     });
   }
 
-  // Validate last user message length
   const lastMsg = messages[messages.length - 1];
   const lastText =
     lastMsg?.parts

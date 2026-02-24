@@ -33,7 +33,6 @@ export function useToolResultTracker({
       );
       if (hasToolParts) {
         setFileRefreshKey((k) => k + 1);
-        // Extract sandboxId from the latest tool result output
         for (let i = lastMsg.parts.length - 1; i >= 0; i--) {
           const p = lastMsg.parts[i];
           if (

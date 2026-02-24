@@ -1,6 +1,5 @@
 import { EventEmitter } from 'events';
 
-// ── Output Stream Manager ────────────────────────────────────────────
 // Enables real-time stdout/stderr streaming from sandbox executions
 // to the client via SSE. Keyed by chatId (one active stream per
 // conversation since tool calls execute sequentially).

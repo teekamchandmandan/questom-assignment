@@ -102,8 +102,6 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
   );
 }
 
-// ── Hook for managing toasts ────────────────────────────────────────
-
 export function useToasts() {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 

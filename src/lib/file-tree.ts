@@ -1,7 +1,4 @@
-// ── File Tree Utilities ──────────────────────────────────────────────
-// Pure data-transform helpers used by the FileExplorer component.
-// Extracted here to keep the component focused on rendering and to
-// make this logic independently testable.
+// Pure data-transform helpers: flat FileEntry list → nested TreeNode tree.
 
 export interface FileEntry {
   path: string;
@@ -60,7 +57,6 @@ export function buildTree(entries: FileEntry[]): TreeNode[] {
     }
   }
 
-  // Sort: directories first, then alphabetically
   function sortNodes(nodes: TreeNode[]) {
     nodes.sort((a, b) => {
       if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;

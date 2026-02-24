@@ -3,8 +3,6 @@ import type { UIMessage } from 'ai';
 import type { Conversation, Language } from '@/lib/conversations';
 import type { ToastData } from '@/components/Toast';
 
-// ── State Interface ─────────────────────────────────────────────────
-
 export interface ChatState {
   messages: UIMessage[];
   input: string;
@@ -15,8 +13,6 @@ export interface ChatState {
   fileExplorerOpen: boolean;
   conversations: Conversation[];
 }
-
-// ── Actions Interface ───────────────────────────────────────────────
 
 export interface ChatActions {
   sendMessage: (opts: { text: string }) => Promise<void>;
@@ -34,8 +30,6 @@ export interface ChatActions {
   handleSubmit: (e: React.FormEvent) => void;
 }
 
-// ── Meta Interface ──────────────────────────────────────────────────
-
 export interface ChatMeta {
   chatId: string;
   sandboxId: string | null;
@@ -47,8 +41,6 @@ export interface ChatMeta {
   toasts: ToastData[];
   dismissToast: (id: string) => void;
 }
-
-// ── Context Value ───────────────────────────────────────────────────
 
 export interface ChatContextValue {
   state: ChatState;

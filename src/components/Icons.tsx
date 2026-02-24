@@ -2,8 +2,6 @@ import type { SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement>;
 
-// ── Shared defaults ─────────────────────────────────────────────────
-
 const defaults: IconProps = {
   xmlns: 'http://www.w3.org/2000/svg',
   fill: 'none',
@@ -23,8 +21,6 @@ function icon(size: number, children: React.ReactNode, name: string) {
   Icon.displayName = name;
   return Icon;
 }
-
-// ── Icons ───────────────────────────────────────────────────────────
 
 /** Sidebar panel (rect + vertical divider) */
 export const SidebarIcon = icon(

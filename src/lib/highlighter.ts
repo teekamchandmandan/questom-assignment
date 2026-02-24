@@ -45,13 +45,11 @@ export async function highlightCode(
   const resolved = langMap[lang] ?? lang;
 
   if (!loadedLangs.includes(resolved)) {
-    // Try to load the language dynamically
     try {
       await highlighter.loadLanguage(
         resolved as Parameters<ShikiHighlighter['loadLanguage']>[0],
       );
     } catch {
-      // If it fails, fall back to plain text
       return highlighter.codeToHtml(code, { lang: 'text', theme: THEME });
     }
   }

@@ -40,7 +40,6 @@ export function ChatInput() {
       e.preventDefault();
       if (input.trim() && !isLoading) {
         handleSubmit(e as unknown as React.FormEvent);
-        // Reset height after send
         requestAnimationFrame(() => {
           if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';

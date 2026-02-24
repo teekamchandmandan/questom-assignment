@@ -25,8 +25,6 @@ const FileExplorer = dynamic(
   { ssr: false },
 );
 
-// ── Composed page ───────────────────────────────────────────────────
-
 export default function Chat() {
   return (
     <ChatProvider>
@@ -36,8 +34,6 @@ export default function Chat() {
     </ChatProvider>
   );
 }
-
-// ── Layout — thin composition of compound parts ────────────────────
 
 function ChatLayout() {
   return (
@@ -54,8 +50,6 @@ function ChatLayout() {
     </div>
   );
 }
-
-// ── Messages area ───────────────────────────────────────────────────
 
 function ChatMessages() {
   const { state, actions, meta } = useChatContext();
@@ -112,14 +106,10 @@ function ChatMessages() {
   );
 }
 
-// ── Toast notifications ─────────────────────────────────────────────
-
 function ChatToasts() {
   const { meta } = useChatContext();
   return <ToastContainer toasts={meta.toasts} onDismiss={meta.dismissToast} />;
 }
-
-// ── Thinking indicator ──────────────────────────────────────────────
 
 /**
  * Shows a "Working on it…" indicator when the model is thinking:

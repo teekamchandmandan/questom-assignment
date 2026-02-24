@@ -63,7 +63,6 @@ export function FileExplorer() {
   const tree = buildTree(files);
   const fileCount = files.filter((f) => f.type === 'file').length;
 
-  // ── File preview state ──────────────────────────────────────────
   const [previewFile, setPreviewFile] = useState<{
     path: string;
     name: string;

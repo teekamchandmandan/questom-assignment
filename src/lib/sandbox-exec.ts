@@ -14,8 +14,6 @@ import type {
   SandboxInstance,
 } from './sandbox-types';
 
-// ── Language helpers ──────────────────────────────────────────────────
-
 function commandForLanguage(language: ExecLanguage): string {
   switch (language) {
     case 'python':
@@ -38,8 +36,6 @@ function argsForLanguage(
   }
   return filePath ? [filePath] : ['-e', code];
 }
-
-// ── Shell / file helpers ─────────────────────────────────────────────
 
 /** Shell-escape a string by wrapping it in single quotes and escaping inner quotes. */
 function shellEscape(s: string): string {
@@ -82,8 +78,6 @@ function truncateOutput(output: string): string {
   );
 }
 
-// ── Run in sandbox ───────────────────────────────────────────────────
-
 async function runInSandbox(
   sandbox: SandboxInstance,
   language: ExecLanguage,
@@ -91,7 +85,6 @@ async function runInSandbox(
   filePath?: string,
   streamId?: string,
 ): Promise<CodeExecutionResult> {
-  // If filePath specified, write code to file first
   if (filePath) {
     await writeFileViaCat(sandbox, filePath, code);
   }
@@ -99,7 +92,6 @@ async function runInSandbox(
   // For TypeScript, ensure tsx is available (once per session)
   if (language === 'typescript') {
     const sessions = getSessions();
-    // Find the session for this sandbox to check / set the flag
     let session;
     for (const s of sessions.values()) {
       if (s.sandbox === sandbox) {
@@ -148,7 +140,6 @@ async function runInSandbox(
     };
   }
 
-  // Non-streaming: wait for full result
   const result = await sandbox.runCommand(commandForLanguage(language), args);
   const stdout = await result.stdout();
   const stderr = await result.stderr();
@@ -158,8 +149,6 @@ async function runInSandbox(
     exitCode: result.exitCode,
   };
 }
-
-// ── Public API ───────────────────────────────────────────────────────
 
 export async function executeCode(
   language: ExecLanguage,

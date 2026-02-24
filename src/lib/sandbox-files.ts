@@ -11,8 +11,6 @@ import type {
 
 export type { FileEntry } from './file-tree';
 
-// ── Write ────────────────────────────────────────────────────────────
-
 export async function writeFileToSandbox(
   filePath: string,
   content: string,
@@ -28,10 +26,8 @@ export async function writeFileToSandbox(
       ? await getOrCreateSandbox(conversationId, runtime)
       : await Sandbox.create({ runtime, timeout: SANDBOX_TIMEOUT });
 
-    // Write file content (mkdir + heredoc)
     await writeFileViaCat(sandbox, filePath, content);
 
-    // Verify the write succeeded
     const verify = await sandbox.runCommand('test', ['-f', filePath]);
     if (verify.exitCode !== 0) {
       return { success: false, filePath, error: 'File was not created' };
@@ -39,7 +35,6 @@ export async function writeFileToSandbox(
 
     const sbId = sandbox.sandboxId;
 
-    // If no conversationId, stop the one-off sandbox
     if (!conversationId) {
       await sandbox.stop().catch(() => {});
     }
@@ -51,8 +46,6 @@ export async function writeFileToSandbox(
     return { success: false, filePath, error: message };
   }
 }
-
-// ── List ─────────────────────────────────────────────────────────────
 
 export async function listSandboxFiles(
   conversationId: string,
@@ -99,7 +92,6 @@ done`,
     }
 
     return entries.toSorted((a, b) => {
-      // Directories first, then alphabetical
       if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
       return a.path.localeCompare(b.path);
     });
@@ -107,8 +99,6 @@ done`,
     return [];
   }
 }
-
-// ── Read ─────────────────────────────────────────────────────────────
 
 const MAX_FILE_READ_SIZE = 100_000; // 100 KB max for preview
 
