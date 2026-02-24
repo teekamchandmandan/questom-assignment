@@ -35,7 +35,11 @@ export function loadConversations(): Conversation[] {
 function persist(conversations: Conversation[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
-    cachedConversations = null; // invalidate cache so next read picks up changes
+    // Update cache directly instead of invalidating — avoids a redundant
+    // localStorage read + JSON.parse on the next loadConversations() call
+    cachedConversations = conversations.toSorted(
+      (a, b) => b.updatedAt - a.updatedAt,
+    );
   } catch {
     // localStorage full — silently ignore
   }

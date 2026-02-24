@@ -422,7 +422,7 @@ done`,
       });
     }
 
-    return entries.sort((a, b) => {
+    return entries.toSorted((a, b) => {
       // Directories first, then alphabetical
       if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
       return a.path.localeCompare(b.path);

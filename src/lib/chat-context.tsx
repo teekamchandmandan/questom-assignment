@@ -104,7 +104,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [chatId, setChatId] = useState(() => '');
 
-  // Generate a stable ID on the client only to avoid hydration mismatch
+  // Generate a stable ID on the client only to avoid hydration mismatch.
+  // Trade-off: This causes one empty→UUID transition re-render on mount.
+  // Acceptable because: (1) the app is fully client-rendered (no SSR data
+  // depends on chatId), (2) the re-render is invisible to users, and
+  // (3) alternatives (useSyncExternalStore, suppressHydrationWarning per
+  // element) add complexity without measurable benefit for this use case.
   useEffect(() => {
     setChatId((prev) => prev || generateId());
   }, []);
@@ -116,12 +121,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const languageRef = useRef(language);
+  // Assign during render so the transport closure always sees the latest value
+  // (avoids one render cycle of staleness that useEffect would introduce)
+  languageRef.current = language;
   const { toasts, addToast, dismissToast } = useToasts();
-
-  // Keep the ref in sync so the transport closure sees the latest value
-  useEffect(() => {
-    languageRef.current = language;
-  }, [language]);
 
   // Transport uses a function for `body` so it always reads the
   // latest chatIdRef / languageRef value, even after resets.
@@ -170,13 +173,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     pendingPersistRef.current = false;
     const msgs = messagesRef.current;
     if (msgs.length === 0) return;
+    // Read fresh conversation data to avoid stale closure over `conversations` state
+    const freshConversations = loadConversations();
     const convo: Conversation = {
       id: chatIdRef.current,
       title: deriveTitle(msgs),
       language,
       messages: msgs,
       createdAt:
-        conversations.find((c) => c.id === chatIdRef.current)?.createdAt ??
+        freshConversations.find((c) => c.id === chatIdRef.current)?.createdAt ??
         Date.now(),
       updatedAt: Date.now(),
     };

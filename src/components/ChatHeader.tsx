@@ -3,6 +3,12 @@
 import { useChatContext } from '@/lib/chat-context';
 import { SidebarIcon, FolderPlusIcon, PencilIcon } from './Icons';
 
+// Preload functions for dynamically imported panels.
+// Calling import() multiple times returns the same cached module promise,
+// so this is safe to fire on hover/focus without triggering extra fetches.
+const preloadSidebar = () => import('./ConversationSidebar');
+const preloadFileExplorer = () => import('./FileExplorer');
+
 export function ChatHeader() {
   const { state, actions } = useChatContext();
   const { messages, isLoading, fileExplorerOpen } = state;
@@ -14,6 +20,8 @@ export function ChatHeader() {
         {/* Sidebar toggle */}
         <button
           onClick={toggleSidebar}
+          onMouseEnter={preloadSidebar}
+          onFocus={preloadSidebar}
           className='p-1.5 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors flex-shrink-0'
           title='Toggle history'
           aria-label='Toggle conversation history'
@@ -35,6 +43,8 @@ export function ChatHeader() {
         {messages.length > 0 && (
           <button
             onClick={toggleFileExplorer}
+            onMouseEnter={preloadFileExplorer}
+            onFocus={preloadFileExplorer}
             className={`p-1.5 rounded-md transition-colors flex-shrink-0 ${
               fileExplorerOpen
                 ? 'text-emerald-400 bg-emerald-500/10'

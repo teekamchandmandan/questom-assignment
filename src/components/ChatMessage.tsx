@@ -1,8 +1,20 @@
+import dynamic from 'next/dynamic';
 import type { UIMessage } from 'ai';
 import { ToolCard } from './ToolCard';
 import { WriteFileCard } from './WriteFileCard';
-import { MarkdownRenderer } from './MarkdownRenderer';
 import { isRunCodeToolPart, isWriteFileToolPart } from '@/lib/types';
+
+// Lazy-load MarkdownRenderer (pulls in react-markdown + remark-gfm ~50KB gzipped)
+// — only needed when assistant messages render, not for the initial empty state.
+const MarkdownRenderer = dynamic(
+  () => import('./MarkdownRenderer').then((mod) => mod.MarkdownRenderer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className='h-4 w-48 rounded bg-zinc-800 animate-pulse' />
+    ),
+  },
+);
 
 interface ChatMessageProps {
   message: UIMessage;

@@ -1,6 +1,7 @@
 import { streamText, tool, stepCountIs, convertToModelMessages } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
+import { after } from 'next/server';
 import { executeCode, writeFileToSandbox } from '@/lib/sandbox';
 import {
   getSystemPrompt,
@@ -52,7 +53,8 @@ export async function POST(req: Request) {
   // ── Rate limiting ────────────────────────────────────────────────
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  cleanupRateLimits();
+  // Schedule rate limit cleanup after the response is sent (non-blocking)
+  after(() => cleanupRateLimits());
   if (isRateLimited(ip)) {
     return new Response(
       JSON.stringify({

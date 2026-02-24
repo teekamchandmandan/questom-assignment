@@ -258,7 +258,9 @@ export function FileExplorer() {
                 title='Refresh'
                 disabled={loading}
               >
-                <RefreshIcon className={loading ? 'animate-spin' : ''} />
+                <span className={loading ? 'animate-spin' : ''}>
+                  <RefreshIcon />
+                </span>
               </button>
             )}
             <button
@@ -279,7 +281,9 @@ export function FileExplorer() {
               {previewLoading && (
                 <div className='flex items-center justify-center py-8'>
                   <div className='flex items-center gap-2 text-xs text-zinc-400'>
-                    <SpinnerIcon className='animate-spin' />
+                    <span className='animate-spin'>
+                      <SpinnerIcon />
+                    </span>
                     Reading file…
                   </div>
                 </div>
@@ -317,7 +321,9 @@ export function FileExplorer() {
               {loading && files.length === 0 && (
                 <div className='flex items-center justify-center py-8'>
                   <div className='flex items-center gap-2 text-xs text-zinc-400'>
-                    <SpinnerIcon className='animate-spin' />
+                    <span className='animate-spin'>
+                      <SpinnerIcon />
+                    </span>
                     Loading files…
                   </div>
                 </div>

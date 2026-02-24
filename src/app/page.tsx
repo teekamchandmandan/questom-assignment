@@ -1,22 +1,38 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { ChatProvider, useChatContext } from '@/lib/chat-context';
 import { ChatMessage } from '@/components/ChatMessage';
 import { ChatInput } from '@/components/ChatInput';
 import { ChatHeader } from '@/components/ChatHeader';
 import { EmptyState } from '@/components/EmptyState';
-import { ConversationSidebar } from '@/components/ConversationSidebar';
-import { FileExplorer } from '@/components/FileExplorer';
 import { NetworkBanner } from '@/components/NetworkBanner';
 import { ToastContainer } from '@/components/Toast';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RetryIcon } from '@/components/Icons';
+import type { UIMessage } from 'ai';
+
+// Lazy-load heavy panels that start hidden (sidebar & file explorer)
+const ConversationSidebar = dynamic(
+  () =>
+    import('@/components/ConversationSidebar').then(
+      (mod) => mod.ConversationSidebar,
+    ),
+  { ssr: false },
+);
+const FileExplorer = dynamic(
+  () => import('@/components/FileExplorer').then((mod) => mod.FileExplorer),
+  { ssr: false },
+);
 
 // ── Composed page ───────────────────────────────────────────────────
 
 export default function Chat() {
   return (
     <ChatProvider>
-      <ChatLayout />
+      <ErrorBoundary>
+        <ChatLayout />
+      </ErrorBoundary>
     </ChatProvider>
   );
 }
@@ -57,14 +73,14 @@ function ChatMessages() {
         className='max-w-3xl mx-auto space-y-4 sm:space-y-5'
         aria-live='polite'
       >
-        {messages.length === 0 && (
+        {messages.length === 0 ? (
           <EmptyState
             onPromptClick={async (prompt) => {
               if (isLoading) return;
               await sendMessage({ text: prompt });
             }}
           />
-        )}
+        ) : null}
 
         {messages.map((message) => (
           <div key={message.id} className='message-item'>
@@ -72,35 +88,7 @@ function ChatMessages() {
           </div>
         ))}
 
-        {isLoading &&
-          (() => {
-            // Show thinking indicator when waiting for the model:
-            // - After user sends a message (no AI response parts yet)
-            // - Between multi-step tool calls (AI is reasoning for next step)
-            const lastMsg = messages[messages.length - 1];
-            const showThinking =
-              lastMsg?.role === 'user' ||
-              (lastMsg?.role === 'assistant' &&
-                lastMsg.parts[lastMsg.parts.length - 1]?.type.startsWith(
-                  'tool-',
-                ));
-            return showThinking ? (
-              <div
-                className='flex gap-2 sm:gap-3 animate-message-in'
-                role='status'
-              >
-                <div
-                  className='w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-[9px] sm:text-[10px] font-bold flex-shrink-0 shadow-sm shadow-emerald-900/50'
-                  aria-hidden='true'
-                >
-                  AI
-                </div>
-                <div className='text-zinc-400 animate-thinking'>
-                  Working on it…
-                </div>
-              </div>
-            ) : null;
-          })()}
+        {isLoading && <ThinkingIndicator messages={messages} />}
 
         {error && (
           <div
@@ -129,4 +117,33 @@ function ChatMessages() {
 function ChatToasts() {
   const { meta } = useChatContext();
   return <ToastContainer toasts={meta.toasts} onDismiss={meta.dismissToast} />;
+}
+
+// ── Thinking indicator ──────────────────────────────────────────────
+
+/**
+ * Shows a "Working on it…" indicator when the model is thinking:
+ * - After user sends a message (no AI response parts yet)
+ * - Between multi-step tool calls (AI is reasoning for next step)
+ */
+function ThinkingIndicator({ messages }: { messages: UIMessage[] }) {
+  const lastMsg = messages[messages.length - 1];
+  const showThinking =
+    lastMsg?.role === 'user' ||
+    (lastMsg?.role === 'assistant' &&
+      lastMsg.parts[lastMsg.parts.length - 1]?.type.startsWith('tool-'));
+
+  if (!showThinking) return null;
+
+  return (
+    <div className='flex gap-2 sm:gap-3 animate-message-in' role='status'>
+      <div
+        className='w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-[9px] sm:text-[10px] font-bold flex-shrink-0 shadow-sm shadow-emerald-900/50'
+        aria-hidden='true'
+      >
+        AI
+      </div>
+      <div className='text-zinc-400 animate-thinking'>Working on it…</div>
+    </div>
+  );
 }

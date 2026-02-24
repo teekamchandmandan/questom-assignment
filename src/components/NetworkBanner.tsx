@@ -12,8 +12,8 @@ export function NetworkBanner() {
     const handleOffline = () => setIsOffline(true);
     const handleOnline = () => setIsOffline(false);
 
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline, { passive: true });
+    window.addEventListener('online', handleOnline, { passive: true });
 
     return () => {
       window.removeEventListener('offline', handleOffline);
