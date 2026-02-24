@@ -1,20 +1,16 @@
 # Sandbox Agent
 
-An AI-powered code execution chatbot built with Next.js, the Vercel AI SDK, and Vercel Sandbox. Describe a coding task in natural language, and an OpenAI-powered agent writes code, executes it inside a Firecracker microVM, and streams the results back — all within a polished chat interface.
+AI code-execution chat app built with Next.js, AI SDK v6, and Vercel Sandbox. Users describe a coding task, the agent writes code, runs it in an isolated Firecracker microVM, and streams results back to the UI.
 
 ## Features
 
-- **AI agent with tool calling** — GPT-5 mini generates code and autonomously executes it via `runCode` and `writeFile` tools, self-correcting on errors up to 5 steps
-- **Sandboxed execution** — Code runs inside [Vercel Sandbox](https://vercel.com/docs/sandbox) (Firecracker microVMs) for full isolation; supports JavaScript, TypeScript, and Python
-- **Stateful sessions** — Sandbox filesystem persists across tool calls in a conversation, enabling multi-step workflows (create a file → import it → run it)
-- **Multi-file projects** — `writeFile` tool for config/data files + `runCode` with `filePath` for file-based execution; build full projects incrementally
-- **Real-time output streaming** — stdout/stderr stream to the UI in real-time via a dedicated SSE endpoint during long-running executions
-- **Markdown & syntax highlighting** — AI responses render as rich Markdown; code blocks use Shiki (VS Code-quality) highlighting for 17+ languages
-- **Conversation persistence** — Conversations auto-save to localStorage with a sidebar for browsing, switching, and deleting past chats
-- **File explorer** — Right-side panel showing the sandbox's file tree with click-to-preview file contents, auto-refreshing after each tool call; works in serverless via `Sandbox.get()` reconnection
-- **Language selector** — Switch between JavaScript, TypeScript, and Python per conversation
-- **Mobile responsive** — Fully usable on mobile (375px+) with `dvh` viewport, responsive typography, and collapsible panels
-- **Security hardened** — IP-based rate limiting (20 req/min), input length validation (10k chars), stdout truncation (50k chars), capped model output (4096 tokens)
+- Tool-calling agent (`runCode`, `writeFile`) with retry loops capped at 5 steps
+- Sandboxed execution for JavaScript, TypeScript, and Python
+- Stateful sandbox sessions per conversation with idle TTL cleanup
+- Real-time stdout/stderr streaming via SSE (with graceful fallback)
+- Conversation persistence in localStorage
+- Sandbox file explorer with serverless-safe reconnection (`Sandbox.get()`)
+- Input, output, token, timeout, and rate-limit guards
 
 ## Architecture
 
@@ -50,42 +46,46 @@ User → Chat UI (Next.js App Router)
 ```
 src/
 ├── app/
-│   ├── page.tsx                    # Main chat page (layout shell)
-│   ├── layout.tsx                  # Root layout (Geist font, metadata)
-│   ├── globals.css                 # Tailwind v4 + dark theme + animations
+│   ├── page.tsx
 │   └── api/
-│       ├── chat/route.ts           # POST — AI agent with runCode & writeFile tools
+│       ├── chat/route.ts
 │       └── sandbox/
-│           ├── stream/route.ts     # GET SSE — real-time stdout/stderr streaming
+│           ├── stream/route.ts
 │           └── files/
-│               ├── route.ts        # GET — sandbox file tree listing
-│               └── read/route.ts   # GET — read individual file content
+│               ├── route.ts
+│               └── read/route.ts
 ├── components/
-│   ├── ChatHeader.tsx              # Header bar with title, toggles, new chat
-│   ├── ChatInput.tsx               # Input bar + language selector + send/stop
-│   ├── ChatMessage.tsx             # Message bubble (user/AI) with avatar
-│   ├── CodeBlock.tsx               # Shiki syntax-highlighted code block
-│   ├── ConversationSidebar.tsx     # Left sidebar for conversation history
-│   ├── CopyButton.tsx              # Clipboard copy with success feedback
-│   ├── EmptyState.tsx              # Welcome screen with clickable example prompts
-│   ├── FileExplorer.tsx            # Right sidebar for sandbox file tree + preview
-│   ├── Icons.tsx                   # SVG icon components (icon factory pattern)
-│   ├── LifecycleIndicator.tsx      # Sandbox → Running → Result status dots
-│   ├── MarkdownRenderer.tsx        # react-markdown with styled components
-│   ├── NetworkBanner.tsx           # Offline detection banner
-│   ├── Toast.tsx                   # Toast notification system
-│   ├── ToolCard.tsx                # Sandbox execution card with lifecycle display
-│   └── WriteFileCard.tsx           # File creation card with syntax preview
+│   ├── FileExplorer.tsx
+│   ├── file-explorer/
+│   │   ├── TreeNodeItem.tsx
+│   │   └── FilePreview.tsx
+│   ├── ToolCard.tsx
+│   ├── WriteFileCard.tsx
+│   └── ...
 └── lib/
-    ├── chat-context.tsx            # ChatProvider context (state, actions, meta)
-    ├── constants.ts                # Model config, limits, system prompts
-    ├── conversations.ts            # localStorage persistence helpers
-    ├── file-tree.ts                # File tree builder, icons, utilities
-    ├── highlighter.ts              # Shiki singleton with language preloading
-    ├── output-stream.ts            # OutputStreamManager (EventEmitter + SSE bridge)
-    ├── sandbox.ts                  # SandboxSessionManager, executeCode, writeFile
-    └── types.ts                    # Shared TypeScript types & type guards
+  ├── chat-context.tsx
+  ├── chat-types.ts
+  ├── hooks/
+  │   ├── use-auto-scroll.ts
+  │   ├── use-conversation-persistence.ts
+  │   └── use-tool-result-tracker.ts
+  ├── sandbox.ts                 # public barrel exports
+  ├── sandbox-exec.ts
+  ├── sandbox-files.ts
+  ├── sandbox-sessions.ts
+  ├── sandbox-types.ts
+  └── ...
 ```
+
+### Core module responsibilities
+
+- `src/lib/sandbox.ts`: stable public API (`executeCode`, `writeFileToSandbox`, file APIs)
+- `src/lib/sandbox-exec.ts`: runtime command execution + output truncation + streaming
+- `src/lib/sandbox-sessions.ts`: sandbox reuse, TTL cleanup, and `Sandbox.get()` reconnection
+- `src/lib/sandbox-files.ts`: file write/list/read helpers
+- `src/lib/chat-context.tsx`: provider wiring only
+- `src/lib/hooks/*`: extracted chat concerns (auto-scroll, persistence, tool result tracking)
+- `src/components/FileExplorer.tsx` + `src/components/file-explorer/*`: layout shell + tree/preview subcomponents
 
 ## Getting Started
 
@@ -153,7 +153,6 @@ Add `OPENAI_API_KEY` in your Vercel project's environment variables. Sandbox wor
 
 ## Example Prompts
 
-- "Write a Python script that generates the first 20 Fibonacci numbers"
-- "Create a TypeScript function to check if a number is prime, then test it with 17 and 20"
-- "Build a REST API mock that returns JSON user data"
-- "Generate 5 random UUIDs without any external packages"
+- "Write a Python script that prints the first 20 Fibonacci numbers"
+- "Create a TypeScript prime-check function and test 17 and 20"
+- "Generate 5 UUIDs without external packages"

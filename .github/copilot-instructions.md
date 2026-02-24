@@ -8,19 +8,27 @@ Next.js 16 App Router chat application. An OpenAI agent (GPT-5 mini) generates a
 
 **Key files:**
 
-| File                                      | Responsibility                                                                                                                                                                                   |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/lib/chat-context.tsx`                | Single `ChatProvider` context with `{ state, actions, meta }` pattern; all chat state lives here                                                                                                 |
-| `src/lib/sandbox.ts`                      | Sandbox session manager (`Map` + TTL keyed by `conversationId:runtime`); `executeCode()`, `writeFileToSandbox()`, `listSandboxFiles()`; serverless reconnection via `Sandbox.get({ sandboxId })` |
-| `src/lib/constants.ts`                    | All tunables: `MODEL_NAME`, timeouts, max tokens, `getSystemPrompt()` factory                                                                                                                    |
-| `src/lib/types.ts`                        | Tool part interfaces + type guards (`RunCodeToolPart`, `WriteFileToolPart`, `isRunCodeToolPart()`); tool outputs include `sandboxId`                                                             |
-| `src/lib/output-stream.ts`                | In-memory `EventEmitter` pub/sub for real-time stdout/stderr streaming                                                                                                                           |
-| `src/lib/conversations.ts`                | localStorage CRUD for conversations (key: `sandbox-agent-conversations:v1`)                                                                                                                      |
-| `src/lib/file-tree.ts`                    | `FileEntry` type, `buildTree()` to convert flat file list to nested `TreeNode` tree, file icon helpers                                                                                           |
-| `src/app/api/chat/route.ts`               | `streamText` with `convertToModelMessages()`, rate limiter, input validation                                                                                                                     |
-| `src/app/api/sandbox/stream/route.ts`     | SSE endpoint — subscribes to `outputManager` for real-time output                                                                                                                                |
-| `src/app/api/sandbox/files/route.ts`      | GET endpoint — returns sandbox file tree for the `FileExplorer` panel                                                                                                                            |
-| `src/app/api/sandbox/files/read/route.ts` | GET endpoint — reads individual file content from sandbox for preview                                                                                                                            |
+| File                                            | Responsibility                                                                                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/lib/chat-context.tsx`                      | `ChatProvider` composition root; wires `useChat` to extracted hooks in `src/lib/hooks/*` and exposes `{ state, actions, meta }`      |
+| `src/lib/sandbox.ts`                            | Public barrel exports for sandbox functionality (`executeCode`, `writeFileToSandbox`, file APIs)                                     |
+| `src/lib/sandbox-exec.ts`                       | Code execution pipeline (`runInSandbox`, streaming logs, output truncation, one-off execution path)                                  |
+| `src/lib/sandbox-sessions.ts`                   | Session map + TTL cleanup + runtime keying + `Sandbox.get({ sandboxId })` reconnection                                               |
+| `src/lib/sandbox-files.ts`                      | File write/list/read APIs used by route handlers and file explorer                                                                   |
+| `src/lib/sandbox-types.ts`                      | Shared sandbox runtime/result/session types                                                                                          |
+| `src/lib/chat-types.ts`                         | Context state/action/meta type contracts                                                                                             |
+| `src/lib/hooks/use-auto-scroll.ts`              | Message auto-scroll behavior and scroll tracking refs                                                                                |
+| `src/lib/hooks/use-conversation-persistence.ts` | Batched localStorage persistence on ready state transitions                                                                          |
+| `src/lib/hooks/use-tool-result-tracker.ts`      | Tool-result-derived file refresh key and sandboxId tracking                                                                          |
+| `src/lib/constants.ts`                          | All tunables: `MODEL_NAME`, timeouts, max tokens, `getSystemPrompt()` factory                                                        |
+| `src/lib/types.ts`                              | Tool part interfaces + type guards (`RunCodeToolPart`, `WriteFileToolPart`, `isRunCodeToolPart()`); tool outputs include `sandboxId` |
+| `src/lib/output-stream.ts`                      | In-memory `EventEmitter` pub/sub for real-time stdout/stderr streaming                                                               |
+| `src/lib/conversations.ts`                      | localStorage CRUD for conversations (key: `sandbox-agent-conversations:v1`)                                                          |
+| `src/lib/file-tree.ts`                          | `FileEntry` type, `buildTree()` to convert flat file list to nested `TreeNode` tree, file icon helpers                               |
+| `src/app/api/chat/route.ts`                     | `streamText` with `convertToModelMessages()`, rate limiter, input validation                                                         |
+| `src/app/api/sandbox/stream/route.ts`           | SSE endpoint — subscribes to `outputManager` for real-time output                                                                    |
+| `src/app/api/sandbox/files/route.ts`            | GET endpoint — returns sandbox file tree for the `FileExplorer` panel                                                                |
+| `src/app/api/sandbox/files/read/route.ts`       | GET endpoint — reads individual file content from sandbox for preview                                                                |
 
 ## AI SDK v6 Conventions
 
@@ -72,14 +80,14 @@ This closure pattern is intentional — a static `body` object would go stale af
 ## Adding a New Tool
 
 1. Define Zod v4 input schema and `tool()` in `src/app/api/chat/route.ts`, add to the `tools` object passed to `streamText`
-2. Add execution logic in `src/lib/sandbox.ts` (export a new async function)
+2. Add execution logic in `src/lib/sandbox-exec.ts` and/or `src/lib/sandbox-files.ts`; expose it through `src/lib/sandbox.ts` if it should be part of the public API
 3. Create `{ToolName}Input`, `{ToolName}Output`, `{ToolName}ToolPart` interfaces + `is{ToolName}ToolPart()` type guard in `src/lib/types.ts` — follow the `RunCodeToolPart` pattern exactly
 4. Build a card component in `src/components/{ToolName}Card.tsx` to render all states (`input-streaming`, `input-available`, `output-available`, `output-error`)
 5. Wire the card into `ChatMessage.tsx` with the type guard: `if (is{ToolName}ToolPart(part)) return <{ToolName}Card part={part} />`
 
 ## Sandbox Session Management
 
-Sandboxes are reused across tool calls within a conversation via `src/lib/sandbox.ts`:
+Sandboxes are reused across tool calls within a conversation via `src/lib/sandbox-sessions.ts` + `src/lib/sandbox-exec.ts`:
 
 - **Session key:** `${conversationId}:${runtime}` — each runtime (`node24`, `python3.13`) gets its own sandbox
 - **TTL:** `SANDBOX_SESSION_TTL` (5 min idle) — a `setInterval` cleanup runs every 60s
@@ -92,7 +100,7 @@ Sandboxes are reused across tool calls within a conversation via `src/lib/sandbo
 
 Real-time stdout/stderr uses an in-memory pub/sub (`src/lib/output-stream.ts`) + SSE (`/api/sandbox/stream`):
 
-1. `sandbox.ts` calls `outputManager.start(chatId)` → pushes chunks via `outputManager.push()` → calls `outputManager.end()`
+1. `sandbox-exec.ts` calls `outputManager.start(chatId)` → pushes chunks via `outputManager.push()` → calls `outputManager.end()`
 2. `ToolCard` opens an `EventSource` to `/api/sandbox/stream?chatId=...` during the `input-available` state
 3. The SSE route subscribes to `outputManager` and pipes chunks as `data:` events
 
@@ -106,7 +114,7 @@ All limits are defined in `src/lib/constants.ts`:
 | ----------------- | ----------------- | ------------------------------------------------------------ |
 | Rate limit        | 20 req/min per IP | In-memory Map in `route.ts`; resets per 60s window           |
 | Input length      | 10,000 chars      | Last user message validated server-side                      |
-| Output truncation | 50,000 chars      | `truncateOutput()` in `sandbox.ts` caps stdout/stderr        |
+| Output truncation | 50,000 chars      | `truncateOutput()` in `sandbox-exec.ts` caps stdout/stderr   |
 | Model output      | 4,096 tokens      | `maxOutputTokens` in `streamText` call                       |
 | Max tool steps    | 5                 | `stopWhen: stepCountIs(MAX_STEPS)` — prevents infinite loops |
 | Sandbox timeout   | 5 min             | Sandbox lifetime via `Sandbox.create({ timeout })`           |
