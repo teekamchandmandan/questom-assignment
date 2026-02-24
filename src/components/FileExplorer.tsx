@@ -4,16 +4,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useChatContext } from '@/lib/chat-context';
 import {
   buildTree,
-  formatSize,
   getFileIcon,
-  languageFromExtension,
   type FileEntry,
   type TreeNode,
 } from '@/lib/file-tree';
-import { CodeBlock } from './CodeBlock';
-import { CopyButton } from './CopyButton';
+import { TreeNodeItem } from './file-explorer/TreeNodeItem';
+import { FilePreview } from './file-explorer/FilePreview';
 import {
-  ChevronRightIcon,
   FolderIcon,
   RefreshIcon,
   CloseSmallIcon,
@@ -21,80 +18,6 @@ import {
   FolderEmptyIcon,
   ArrowLeftIcon,
 } from './Icons';
-
-// ── Tree Node Component ─────────────────────────────────────────────
-
-function TreeNodeItem({
-  node,
-  depth,
-  selectedPath,
-  onFileClick,
-}: {
-  node: TreeNode;
-  depth: number;
-  selectedPath: string | null;
-  onFileClick: (node: TreeNode) => void;
-}) {
-  const [expanded, setExpanded] = useState(true);
-  const isDir = node.type === 'directory';
-  const isSelected = !isDir && node.path === selectedPath;
-
-  return (
-    <div>
-      <button
-        onClick={isDir ? () => setExpanded((e) => !e) : () => onFileClick(node)}
-        className={`w-full flex items-center gap-1.5 py-1 px-2 text-left rounded-md transition-colors text-xs cursor-pointer ${
-          isSelected
-            ? 'bg-emerald-500/10 text-emerald-400'
-            : isDir
-              ? 'text-zinc-300 hover:bg-zinc-800/60'
-              : 'text-zinc-400 hover:bg-zinc-800/40'
-        }`}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
-      >
-        {isDir ? (
-          <span
-            className={`flex-shrink-0 transition-transform duration-150 text-zinc-400 ${
-              expanded ? 'rotate-90' : ''
-            }`}
-          >
-            <ChevronRightIcon />
-          </span>
-        ) : (
-          <span className='w-3 flex-shrink-0' />
-        )}
-
-        <span className='flex-shrink-0 text-[11px]'>
-          {isDir ? (expanded ? '📂' : '📁') : getFileIcon(node.name)}
-        </span>
-
-        <span className='truncate flex-1'>{node.name}</span>
-
-        {!isDir && node.size != null && (
-          <span className='text-[10px] text-zinc-500 flex-shrink-0 ml-1'>
-            {formatSize(node.size)}
-          </span>
-        )}
-      </button>
-
-      {isDir && expanded && node.children.length > 0 && (
-        <div>
-          {node.children.map((child) => (
-            <TreeNodeItem
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              selectedPath={selectedPath}
-              onFileClick={onFileClick}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── FileExplorer Component ──────────────────────────────────────────
 
 export function FileExplorer() {
   const { state, actions, meta } = useChatContext();
@@ -109,7 +32,6 @@ export function FileExplorer() {
 
   const fetchFiles = useCallback(async () => {
     if (!chatId) return;
-    // Abort any in-flight fetch
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -132,7 +54,6 @@ export function FileExplorer() {
     }
   }, [chatId, sandboxId]);
 
-  // Fetch whenever panel opens or refreshKey changes
   useEffect(() => {
     if (isOpen) {
       fetchFiles();
@@ -151,7 +72,6 @@ export function FileExplorer() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  // Reset preview when panel closes or files refresh
   useEffect(() => {
     if (!isOpen) {
       setPreviewFile(null);
@@ -276,47 +196,13 @@ export function FileExplorer() {
         {/* Content — either file list or preview */}
         <div className='flex-1 overflow-y-auto'>
           {previewFile ? (
-            // ── File Preview ────────────────────────────────
-            <div className='flex flex-col h-full'>
-              {previewLoading && (
-                <div className='flex items-center justify-center py-8'>
-                  <div className='flex items-center gap-2 text-xs text-zinc-400'>
-                    <span className='animate-spin'>
-                      <SpinnerIcon />
-                    </span>
-                    Reading file…
-                  </div>
-                </div>
-              )}
-
-              {previewError && (
-                <div className='px-3 py-4 text-xs text-red-400'>
-                  {previewError}
-                </div>
-              )}
-
-              {previewContent !== null && (
-                <div className='flex-1 flex flex-col min-h-0'>
-                  {/* Preview toolbar */}
-                  <div className='flex items-center justify-between px-3 py-1.5 border-b border-zinc-800/40'>
-                    <span className='text-[10px] text-zinc-500 font-mono truncate'>
-                      {previewFile.path.replace(/^\/vercel\/sandbox\//, '')}
-                    </span>
-                    <CopyButton text={previewContent} />
-                  </div>
-                  {/* Code content */}
-                  <div className='flex-1 overflow-auto'>
-                    <CodeBlock
-                      code={previewContent}
-                      language={languageFromExtension(previewFile.name)}
-                      className='!rounded-none border-none [&_pre]:!py-3 [&_pre]:!px-3 text-[11px]'
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+            <FilePreview
+              previewFile={previewFile}
+              previewContent={previewContent}
+              previewLoading={previewLoading}
+              previewError={previewError}
+            />
           ) : (
-            // ── File List ───────────────────────────────────
             <div className='py-2'>
               {loading && files.length === 0 && (
                 <div className='flex items-center justify-center py-8'>
