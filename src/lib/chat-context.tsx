@@ -10,78 +10,34 @@ import {
   useMemo,
   type FormEvent,
   type ReactNode,
-  type RefObject,
 } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import type { UIMessage } from 'ai';
 import {
   loadConversations,
-  saveConversation,
   deleteConversation,
-  deriveTitle,
   type Conversation,
   type Language,
 } from '@/lib/conversations';
-import { isRunCodeToolPart, isWriteFileToolPart } from '@/lib/types';
-import { useToasts, type ToastData } from '@/components/Toast';
+import { useToasts } from '@/components/Toast';
+import { useAutoScroll } from '@/lib/hooks/use-auto-scroll';
+import { useConversationPersistence } from '@/lib/hooks/use-conversation-persistence';
+import { useToolResultTracker } from '@/lib/hooks/use-tool-result-tracker';
+import type { ChatContextValue } from '@/lib/chat-types';
+
+// Re-export types so existing consumers don't need to change imports
+export type {
+  ChatState,
+  ChatActions,
+  ChatMeta,
+  ChatContextValue,
+} from '@/lib/chat-types';
 
 function generateId() {
   return crypto.randomUUID();
 }
 
-// ── State Interface ─────────────────────────────────────────────────
-
-export interface ChatState {
-  messages: UIMessage[];
-  input: string;
-  language: Language;
-  isLoading: boolean;
-  error: Error | null;
-  sidebarOpen: boolean;
-  fileExplorerOpen: boolean;
-  conversations: Conversation[];
-}
-
-// ── Actions Interface ───────────────────────────────────────────────
-
-export interface ChatActions {
-  sendMessage: (opts: { text: string }) => Promise<void>;
-  setInput: (value: string) => void;
-  setLanguage: (lang: Language) => void;
-  stop: () => void;
-  regenerate: () => void;
-  toggleSidebar: () => void;
-  toggleFileExplorer: () => void;
-  closeSidebar: () => void;
-  closeFileExplorer: () => void;
-  newChat: () => void;
-  selectConversation: (convo: Conversation) => void;
-  deleteConversation: (id: string) => void;
-  handleSubmit: (e: FormEvent) => void;
-}
-
-// ── Meta Interface ──────────────────────────────────────────────────
-
-export interface ChatMeta {
-  chatId: string;
-  sandboxId: string | null;
-  messagesEndRef: RefObject<HTMLDivElement | null>;
-  scrollContainerRef: RefObject<HTMLDivElement | null>;
-  handleScroll: () => void;
-  fileRefreshKey: number;
-  status: string;
-  toasts: ToastData[];
-  dismissToast: (id: string) => void;
-}
-
 // ── Context ─────────────────────────────────────────────────────────
-
-export interface ChatContextValue {
-  state: ChatState;
-  actions: ChatActions;
-  meta: ChatMeta;
-}
 
 export const ChatContext = createContext<ChatContextValue | null>(null);
 
@@ -99,17 +55,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>('javascript');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [fileExplorerOpen, setFileExplorerOpen] = useState(false);
-  const [fileRefreshKey, setFileRefreshKey] = useState(0);
-  const [sandboxId, setSandboxId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [chatId, setChatId] = useState(() => '');
 
   // Generate a stable ID on the client only to avoid hydration mismatch.
-  // Trade-off: This causes one empty→UUID transition re-render on mount.
-  // Acceptable because: (1) the app is fully client-rendered (no SSR data
-  // depends on chatId), (2) the re-render is invisible to users, and
-  // (3) alternatives (useSyncExternalStore, suppressHydrationWarning per
-  // element) add complexity without measurable benefit for this use case.
   useEffect(() => {
     setChatId((prev) => prev || generateId());
   }, []);
@@ -117,13 +66,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const chatIdRef = useRef(chatId);
   chatIdRef.current = chatId;
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const shouldAutoScrollRef = useRef(true);
   const languageRef = useRef(language);
-  // Assign during render so the transport closure always sees the latest value
-  // (avoids one render cycle of staleness that useEffect would introduce)
   languageRef.current = language;
+
   const { toasts, addToast, dismissToast } = useToasts();
 
   // Transport uses a function for `body` so it always reads the
@@ -147,104 +92,38 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     error,
     stop,
     regenerate,
-  } = useChat({
-    transport,
-  });
+  } = useChat({ transport });
 
   const isLoading = status === 'submitted' || status === 'streaming';
+
+  // Keep a mutable ref to messages for hooks that read latest value
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   // ── Load conversations from localStorage on mount ──────────────
   useEffect(() => {
     setConversations(loadConversations());
   }, []);
 
-  // ── Persist conversation when streaming ends or on unmount ─────
-  const pendingPersistRef = useRef(false);
-  useEffect(() => {
-    if (messages.length === 0) return;
-    // Mark that we have data to persist
-    pendingPersistRef.current = true;
-  }, [messages]);
+  // ── Extracted hooks ───────────────────────────────────────────
+  useConversationPersistence({
+    messages,
+    messagesRef,
+    status,
+    chatIdRef,
+    language,
+    setConversations,
+  });
 
-  // Actually write to localStorage only when status settles to 'ready'
-  // (avoids dozens of writes per second during streaming)
-  useEffect(() => {
-    if (status !== 'ready' || !pendingPersistRef.current) return;
-    pendingPersistRef.current = false;
-    const msgs = messagesRef.current;
-    if (msgs.length === 0) return;
-    // Read fresh conversation data to avoid stale closure over `conversations` state
-    const freshConversations = loadConversations();
-    const convo: Conversation = {
-      id: chatIdRef.current,
-      title: deriveTitle(msgs),
-      language,
-      messages: msgs,
-      createdAt:
-        freshConversations.find((c) => c.id === chatIdRef.current)?.createdAt ??
-        Date.now(),
-      updatedAt: Date.now(),
-    };
-    saveConversation(convo);
-    setConversations(loadConversations());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  const { fileRefreshKey, sandboxId, setFileRefreshKey, setSandboxId } =
+    useToolResultTracker({ status, messagesRef });
 
-  // ── Refresh file explorer after tool calls complete ────────────
-  const messagesRef = useRef(messages);
-  messagesRef.current = messages;
-  const prevStatusRef = useRef(status);
-  useEffect(() => {
-    const msgs = messagesRef.current;
-    if (
-      prevStatusRef.current !== 'ready' &&
-      status === 'ready' &&
-      msgs.length > 0
-    ) {
-      const lastMsg = msgs[msgs.length - 1];
-      const hasToolParts = lastMsg?.parts?.some((p: { type: string }) =>
-        p.type.startsWith('tool-'),
-      );
-      if (hasToolParts) {
-        setFileRefreshKey((k) => k + 1);
-        // Extract sandboxId from the latest tool result output
-        for (let i = lastMsg.parts.length - 1; i >= 0; i--) {
-          const p = lastMsg.parts[i];
-          if (
-            isRunCodeToolPart(p) &&
-            p.state === 'output-available' &&
-            p.output?.sandboxId
-          ) {
-            setSandboxId(p.output.sandboxId);
-            break;
-          }
-          if (
-            isWriteFileToolPart(p) &&
-            p.state === 'output-available' &&
-            p.output?.sandboxId
-          ) {
-            setSandboxId(p.output.sandboxId);
-            break;
-          }
-        }
-      }
-    }
-    prevStatusRef.current = status;
-  }, [status]);
-
-  // ── Smart auto-scroll ─────────────────────────────────────────
-  const handleScroll = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    shouldAutoScrollRef.current = distanceFromBottom < 150;
-  }, []);
-
-  useEffect(() => {
-    if (shouldAutoScrollRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
+  const {
+    messagesEndRef,
+    scrollContainerRef,
+    shouldAutoScrollRef,
+    handleScroll,
+  } = useAutoScroll(messages);
 
   // ── Actions ───────────────────────────────────────────────────
 
@@ -257,7 +136,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       shouldAutoScrollRef.current = true;
       await sendMessage({ text });
     },
-    [input, isLoading, sendMessage],
+    [input, isLoading, sendMessage, shouldAutoScrollRef],
   );
 
   const handleNewChat = useCallback(() => {
@@ -271,7 +150,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setFileExplorerOpen(false);
     setFileRefreshKey(0);
     setSandboxId(null);
-  }, [setMessages]);
+  }, [setMessages, shouldAutoScrollRef, setFileRefreshKey, setSandboxId]);
 
   const handleSelectConversation = useCallback(
     (convo: Conversation) => {
@@ -282,7 +161,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setSidebarOpen(false);
       setFileRefreshKey((k) => k + 1);
     },
-    [setMessages],
+    [setMessages, setFileRefreshKey],
   );
 
   const handleDeleteConversation = useCallback(
