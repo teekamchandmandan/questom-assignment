@@ -129,4 +129,4 @@ When adding a new AI tool:
 
 ## License
 
-Internal/demo project (no license declared in this repository).
+MIT
